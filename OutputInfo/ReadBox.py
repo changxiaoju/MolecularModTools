@@ -2,7 +2,7 @@ import numpy as np
 
 def read_XDATCAR_frame(file,num_atoms,cell_vectors):
     """
-    只从XDATCAR文件中读取原子坐标。
+    Read from XDATCAR(or POSCAR).
     
     Parameters:
         file : XDATCAR
@@ -24,7 +24,7 @@ def read_XDATCAR_frame(file,num_atoms,cell_vectors):
         else: # To implement: wrap Cartesian coordinates
             coordinates.append([float(coord) for coord in atom_info])
 
-    return np.array(coordinates),cell_length
+    return cell_length,np.array(coordinates)
     """
     --------------------------usage example-----------------------------
     frames,Cell_length = [],[]
@@ -39,7 +39,7 @@ def read_XDATCAR_frame(file,num_atoms,cell_vectors):
         Cell_length.append(cell_vectors[0][0])
         while True:
             try:
-                coordinates,cell_length = read_XDATCAR_frame(XDATCAR_file,num_atoms,cell_vectors)
+                cell_length,coordinates = read_XDATCAR_frame(XDATCAR_file,num_atoms,cell_vectors)
                 frames.append((coordinates,cell_length))
             except:
                 break
@@ -47,7 +47,7 @@ def read_XDATCAR_frame(file,num_atoms,cell_vectors):
     """
 def read_xyz_frame(file):
     """
-    只从xyz文件中读取原子坐标。
+    Read from xyz file.
     
     Parameters:
         file : XYZ file
@@ -86,7 +86,7 @@ def read_xyz_frame(file):
     """
 def read_lammpstrj_frame(file):
     """
-    只从lammpstrj文件中读取原子坐标。
+    Read from ordinary lammpstrj.
     
     Parameters:
         file : lammpstrj file
@@ -134,8 +134,7 @@ def read_lammpstrj_frame(file):
 
 def read_lammpstrj_NVT_frame(file):
     """
-    只从lammpstrj文件中读取原子坐标。
-    NVT系综盒子
+    Read from NVT lammpstrj file.
     
     Parameters:
         file : lammpstrj file
