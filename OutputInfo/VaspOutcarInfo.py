@@ -96,7 +96,7 @@ class VaspOutcarInfo:
         self.steps = np.arange(1, num_steps + 1) * self.time_step
 
     def calculate_density(self):
-        if len(self.volumes) == 0:
+        if len(self.volume) == 0:
             print("No volume data available.")
             return
         

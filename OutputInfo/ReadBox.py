@@ -29,8 +29,8 @@ def read_XDATCAR_frame(file,num_atoms,cell_vectors):
     --------------------------usage example-----------------------------
     frames,Cell_length = [],[]
     with open('XDATCAR', 'r') as XDATCAR_file:
-        system_info = XDATCAR_file.readline() #一般啥也不是
-        scale_factor = int(XDATCAR_file.readline().strip())
+        system_info = XDATCAR_file.readline() 
+        scale_factor = int(float(XDATCAR_file.readline().strip())) 
         cell_vectors = []
         for _ in range(0,3):
             cell_vectors.append([scale_factor*float(x) for x in XDATCAR_file.readline().split()])

@@ -15,7 +15,7 @@ class write_box():
         coordinates: np.ndarray, optional
             For single frame.
             A two-dimensional array of floats with shape (number of atoms, 3).
-        elem_name_idx: dict, optional
+        ele_name_idx: dict, optional
             For lammps file.
             {'element A': 1, 'element B': 2,...}
     Returns:
@@ -81,7 +81,7 @@ class write_box():
                 ret += f'{x:.6f} {y:.6f} {z:.6f}\n'
                 atom_id += 1
 
-        with open(filename, 'w') as f:
+        with open(self.filename, 'w') as f:
             f.write(ret)
             
             
