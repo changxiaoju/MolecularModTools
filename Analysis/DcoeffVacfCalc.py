@@ -146,21 +146,14 @@ class DcoeffVacfCalc():
             atomindex_end = 0
             for typeindex, num in enumerate(nummoltype):
                 atomindex_end += num
-                # Temporary species autocorrelation
                 tmp_autocorrelation = np.zeros(Ndumps)
-                # Calculate the autocorrelation for each particle of species sp
                 for atomindex in range(atomindex_start, atomindex_end):
-                    # Calculate the correlation function and add it to the array
                     atomindex_autocorrelation = autocorrelate(vel[d, atomindex, :])
 
-                    # Add this particle autocorrelation to the species autocorrelation and normalize by the time origins
                     tmp_autocorrelation += atomindex_autocorrelation
 
-                # Save the species autocorrelation for dimension i
                 autocorrelation[typeindex, d, :] = tmp_autocorrelation / num
-                # Save the total autocorrelation
                 autocorrelation[typeindex, -1, :] += tmp_autocorrelation / num
-                # Move to the next species first particle position
                 atomindex_start += num
                 
         diffuso = cumtrapz(autocorrelation)*dt/300000000
