@@ -41,7 +41,7 @@ class RdfCalc:
                     The maximum radius to consider for the radial distribution function.
                     Defaults to `None`, meaning it will be calculated based on the system size.
 
-                output : dict
+                output : dict,optional
                     A dictionary to store the results of the radial distribution analysis.
                     
         """

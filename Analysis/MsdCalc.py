@@ -34,7 +34,7 @@ class MsdCalc:
             ver : bool, optional
                 A flag to indicate whether to print progress during computation.
 
-            output : dict
+            output : dict, optional
                 A dictionary to store the results, e.g., output = {}.
         """
         Lx2, Ly2, Lz2 = Lx/2, Ly/2, Lz/2

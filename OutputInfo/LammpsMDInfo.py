@@ -18,15 +18,15 @@ def basic_info(log_file):
                 Nsteps = None
             if not foundtrjdump:
                 missing_info.append('trj dump')
-                trj_dump = None
+                dump_frec = None
             if not foundthermodump:
                 missing_info.append('thermo dump')
-                thermo_dump = None
+                thermo_frec = None
             if not foundtimestep:
                 missing_info.append('timestep')
                 dt = None
             print('could not decide the following: ' + ', '.join(missing_info))
-            return Nsteps, dt, trj_dump, thermo_dump
+            return Nsteps, dt, dump_frec, thermo_frec
 
         line = logfile.readline()
         line = line.split()
@@ -37,15 +37,15 @@ def basic_info(log_file):
                     foundrunstep = True
                 except:
                     pass
-            if line[0] == 'dump' and any(keyword in line for keyword in ['x', 'y', 'z', 'xs', 'ys', 'zs', 'atom']): # more complicated output format is ignored.
+            if line[0] == 'dump' and any(keyword in line for keyword in ['x', 'y', 'z', 'xs', 'ys', 'zs', 'vx', 'vy', 'vz', 'atom']): # more complicated output format is ignored.
                 try:
-                    trj_dump = int(line[4])
+                    dump_frec = int(line[4])
                     foundtrjdump = True
                 except:
                     pass
             if line[0] == 'thermo' and line[1].isdigit():
                 try:
-                    thermo_dump = int(line[1])
+                    thermo_frec = int(line[1])
                     foundthermodump = True
                 except:
                     pass
@@ -57,11 +57,10 @@ def basic_info(log_file):
                     pass
         i += 1
     logfile.close()
-    return Nsteps, dt, trj_dump, thermo_dump
+    return Nsteps, dt, dump_frec, thermo_frec
 
 def thermo_info(log_file):
     """
-    
     Parameters
     ----------
     log_file: string
@@ -71,33 +70,30 @@ def thermo_info(log_file):
     -------
     df: DataFrame
         The dataframe with header like "Step Temp PotEng..."
-    
     """
+    df_list = [] 
+
     with open(log_file, 'r') as file:
-        data_started = False
-        data_lines = []
-        header = []
 
         for line in file:
-            # Check if the line starts with "Step", indicating the start of the data section
             if 'Step' in line:
-                data_started = True
-                header = line.split()  # Save the header
-                continue
+                header = line.split()
+                break
 
-            # If data has started, collect lines that contain numerical data
-            if data_started:
-                if line.strip():  # Make sure line is not empty
-                    data_lines.append(line)
+        # Define a function to process each chunk of data
+        def process_chunk(chunk):
+            chunk.columns = header  
+            return chunk.dropna() 
 
-                # Break out of the loop if a blank line is encountered, indicating the end of the table
-                elif not line.strip():
-                    break
-    # Convert the data into a numpy array
-    data_array = np.genfromtxt(StringIO("\n".join(data_lines)), dtype=float)
+        chunk_size = 10000  # Define a suitable chunk size
+        chunks = pd.read_csv(file, sep='\s+', header=None, chunksize=chunk_size)
+            
 
-    # Optionally convert to a DataFrame if necessary
-    df = pd.DataFrame(data_array, columns=header)
-    df = df.dropna()
+        for chunk in chunks:
+            df_list.append(process_chunk(chunk))
+
+    df = pd.concat(df_list, ignore_index=True)
+    df = df[~df.applymap(lambda x: isinstance(x, str)).any(axis=1)] # remove rows with strings
+
+
     return df
-

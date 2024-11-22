@@ -4,7 +4,7 @@ import warnings
 
 class DcoeffMsdCalc:
     
-    def runDcoeffMsd(self, namemoltype, dt, tol, output):
+    def runDcoeffMsd(self, namemoltype, dt, tol, output={}):
         
         """
         This function fits the mean square displacement to calculate the

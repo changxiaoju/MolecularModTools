@@ -28,7 +28,7 @@ class VaspOutcarInfo:
             print("OUTCAR file not found.")
             return None
 
-        foundsigam, foundelemass, foundelecount, foundtimestep, foundvolume = False, False, False, False, False
+        foundsigma, foundelemass, foundelecount, foundtimestep, foundvolume = False, False, False, False, False
 
         with open(outcar_file) as outcar:
 

@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 from multiprocessing import Pool
-from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.integrate import cumtrapz
 from Analysis.utils import autocorrelate
 from Analysis.fit import fit
@@ -11,7 +10,7 @@ from OutputInfo import LammpsMDInfo
 
 class ViscCalc():
 
-    def runVisc(self,logfileprefix,logname,nummd,numskip,use_double_exp,output={},popt2=None,endt=None,std_perc=None,NCORES=1,ver=1): 
+    def runVisc(self,fileprefix,Nmd,Nskip,use_double_exp,logname='log.lammps',output={},popt2=None,endt=None,std_perc=None,NCORES=1,ver=1): 
         """
         This function calculates average and standard deviation of the viscosity and fit the result with 
         single or double-exponential function.
@@ -21,18 +20,18 @@ class ViscCalc():
             thermo_df : DataFrame
                 thermo dataframe read from log file, to compute viscosity, it should contain pressure tensor 
 
-            logfileprefix : str
+            fileprefix : str
 
-            logname : str                
-
-            nummd : int
+            Nmd : int
                 num of md
 
-            numskip: int
+            Nskip: int
                 initial lines ignored during the calculation
 
             use_double_exp : bool
                 weather use double-exponential fit
+            
+            logname : str, optional                
             
             output : dict, optional
 
@@ -57,39 +56,40 @@ class ViscCalc():
         # read
         output['Viscosity']={}
         output['Viscosity']['Units']='mcP'
-        if logfileprefix==None:
-            logfileprefix='./'
-        logfilename=logfileprefix+'000/'+logname
-        thermo_df = LammpsMDInfo.read_thermo(logfilename)
-        Nsteps, trj_dump, thermo_dump, dt = LammpsMDInfo.basic_info(logfilename)
+        if fileprefix == None:
+            fileprefix = './'
+            
+        logfilename = fileprefix + '000/' + logname
+        thermo_df = LammpsMDInfo.thermo_info(logfilename)
+        Nsteps, dt, dump_frec, thermo_frec = LammpsMDInfo.basic_info(logfilename)
 
         # calculate
-        (Time,visco,pcorr)=self.getvisc(thermo_df, numskip, dt, NCORES)
+        (Time, visco, autocorrelation)=self.getvisc(thermo_df, Nskip, dt, NCORES)
         trjlen = len(Time)
-        viscosity = np.zeros((nummd,trjlen))
-        autocorrelation = np.zeros((nummd,trjlen+1))
+        viscosity = np.zeros((Nmd,trjlen))
+        sacf = np.zeros((Nmd,trjlen+1))
         viscosity[0] = visco 
-        autocorrelation[0] = pcorr
+        sacf[0] = autocorrelation
         if ver>=1:
-            sys.stdout.write('Viscosity Trajectory 1 of {} complete\n'.format(nummd))
+            sys.stdout.write('Viscosity Trajectory 1 of {} complete\n'.format(Nmd))
         
-        for i in range(1,nummd):
-            logfilename=logfileprefix+str(i).zfill(3)+'/'+logname
-            thermo_df = LammpsMDInfo.read_thermo(logfilename)
-            (Time,visco,pcorr)=self.getvisc(thermo_df, numskip,dt, NCORES)
+        for i in range(1,Nmd):
+            logfilename = fileprefix+str(i).zfill(3) + '/' + logname
+            thermo_df = LammpsMDInfo.thermo_info(logfilename)
+            (Time,visco,autocorrelation)=self.getvisc(thermo_df, Nskip,dt, NCORES)
             if len(visco) < trjlen:
                 trjlen = len(visco)
             viscosity[i, :trjlen] = visco
-            autocorrelation[i, :trjlen+1] = pcorr
+            sacf[i, :trjlen+1] = autocorrelation
             if ver>=1:
-                sys.stdout.write('\rViscosity Trajectory {} of {} complete\n'.format(i+1,nummd))
+                sys.stdout.write('\rViscosity Trajectory {} of {} complete\n'.format(i+1,Nmd))
         if ver>=1:
             sys.stdout.write('\n')
 
-        output['Time']=Time[:trjlen]
-        acf_mean = np.mean(autocorrelation,axis=0)
-        output['Autocorrelations'] = autocorrelation
-        output['Autocorrelation Average'] = acf_mean
+        output['Viscosity']['Time']=Time[:trjlen]
+        sacf_mean = np.mean(sacf,axis=0)
+        output['Viscosity']['sacf'] = sacf
+        output['Viscosity']['sacf Average'] = sacf_mean
 
         # fit
         fitvisc = fit()
@@ -100,37 +100,37 @@ class ViscCalc():
                 popt2 = [2e-3,5e-2,2e3,2e2]
             else:
                 popt2 = [1e-4,1e2]
-        Value,fitvalue = fitvisc.fit(Time,ave_visc,stddev_visc,use_double_exp,popt2,std_perc,endt)
+        Value,fitcurve = fitvisc.fit(Time,ave_visc,stddev_visc,use_double_exp,popt2,std_perc,endt)
 
-        output['Viscosity Integrals'] = viscosity
-        output['Viscosity Average Value'] = Value
-        output['Viscosity Average Integral'] = ave_visc
-        output['Viscosity Standard Deviation'] = stddev_visc
-        output['Viscosity Fit'] = fitvalue
+        output['Viscosity']['Integrals'] = viscosity
+        output['Viscosity']['Average Value'] = Value
+        output['Viscosity']['Average Integral'] = ave_visc
+        output['Viscosity']['Standard Deviation'] = stddev_visc
+        output['Viscosity']['Fit'] = fitcurve
 
         return(output)
 
-    def getvisc(self, thermo_df, numskip, dt, NCORES):
+    def getvisc(self, thermo_df, Nskip, dt, NCORES):
 
         p=Pool(NCORES)
 
         numtimesteps = len(thermo_df['Pxy'])
-        a1=thermo_df['Pxy'][numskip:]
-        a2=thermo_df['Pxz'][numskip:]
-        a3=thermo_df['Pyz'][numskip:]
-        a4=thermo_df['Pxx'][numskip:]-thermo_df['Pyy'][numskip:]
-        a5=thermo_df['Pyy'][numskip:]-thermo_df['Pzz'][numskip:]
-        a6=thermo_df['Pxx'][numskip:]-thermo_df['Pzz'][numskip:]
+        a1=thermo_df['Pxy'][Nskip:]
+        a2=thermo_df['Pxz'][Nskip:]
+        a3=thermo_df['Pyz'][Nskip:]
+        a4=thermo_df['Pxx'][Nskip:]-thermo_df['Pyy'][Nskip:]
+        a5=thermo_df['Pyy'][Nskip:]-thermo_df['Pzz'][Nskip:]
+        a6=thermo_df['Pxx'][Nskip:]-thermo_df['Pzz'][Nskip:]
         array_array=[a1,a2,a3,a4,a5,a6]
         pv=p.map(autocorrelate,array_array)
-        pcorr = (pv[0]+pv[1]+pv[2])/6+(pv[3]+pv[4]+pv[5])/12  
+        autocorrelation = (pv[0]+pv[1]+pv[2])/6+(pv[3]+pv[4]+pv[5])/12  
 
-        temp=np.mean(thermo_df['Temp'][numskip:])
+        temp=np.mean(thermo_df['Temp'][Nskip:])
 
-        visco = (cumtrapz(pcorr,thermo_df['Step'][:len(pcorr)]))*dt*10**-12*1000*101325.**2*thermo_df['Volume'].iloc[-1]*10**-30/(1.38*10**-23*temp)
-        Time = np.array(thermo_df['Step'][:len(pcorr)-1])*dt
+        visco = (cumtrapz(autocorrelation,thermo_df['Step'][:len(autocorrelation)]))*dt*10**-12*1000*101325.**2*thermo_df['Volume'].iloc[-1]*10**-30/(1.38*10**-23*temp)
+        Time = np.array(thermo_df['Step'][:len(autocorrelation)-1])*dt
         p.close()
 
-        return (Time,visco,pcorr)
+        return (Time,visco,autocorrelation)
 
 
