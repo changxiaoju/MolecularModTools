@@ -66,8 +66,7 @@ class DcoeffVacfCalc():
         Nsteps, dt, dump_frec, thermo_frec = LammpsMDInfo.basic_info(logfilename)
 
         velfilename = fileprefix + '000/' + velname
-        with open(velfilename, 'r') as lammpstrj_file:
-            header, frames,atom_type = ReadBox.read_lammps_dump(lammpstrj_file,interval)
+        header, frames,atom_type = ReadBox.read_lammps_dump(velfilename,interval)
         steps, dumpinfo, bounds_matrices = zip(*frames)
         velosity = ReadBox.extract_dump_data(dumpinfo,properties)
         vel = velosity.transpose(2,1,0)
@@ -90,8 +89,7 @@ class DcoeffVacfCalc():
 
         for i in range(1,Nmd):
             velfilename = fileprefix+str(i).zfill(3) + '/' + velname
-            with open(velfilename, 'r') as lammpstrj_file:
-                header, frames,atom_type = ReadBox.read_lammps_dump(lammpstrj_file,interval)
+            header, frames,atom_type = ReadBox.read_lammps_dump(velfilename,interval)
             steps, dumpinfo, bounds_matrices = zip(*frames)
             velosity = ReadBox.extract_dump_data(dumpinfo,properties)
             vel = velosity.transpose(2,1,0)
