@@ -2,7 +2,7 @@ import sys
 import numpy as np
 from multiprocessing import Pool
 from scipy.integrate import cumtrapz
-from Analysis.utils import autocorrelate
+from Analysis.utils import correlationfunction
 from Analysis.fit import fit
 
 from OutputInfo import LammpsMDInfo
@@ -10,7 +10,7 @@ from OutputInfo import LammpsMDInfo
 
 class ViscCalc():
 
-    def runVisc(self,fileprefix,Nmd,Nskip,use_double_exp,logname='log.lammps',output={},popt2=None,endt=None,std_perc=None,NCORES=1,ver=1): 
+    def runVisc(self,fileprefix,Nmd,Nskip,use_double_exp,logname='log.lammps',output={},popt2=None,endt=None,std_perc=None,ver=1): 
         """
         This function calculates average and standard deviation of the viscosity and fit the result with 
         single or double-exponential function.
@@ -46,9 +46,6 @@ class ViscCalc():
                 https://pubs.acs.org/doi/10.1021/acs.jctc.5b00351.
 
                 if endt=None, then use std_prec, if std_prec=None, then std_prec=0.4
-            
-            NCORES : int, optional
-                should be smaller than core number
             
             ver: int, optional
                 if ver>1, output the progress
@@ -111,9 +108,6 @@ class ViscCalc():
         return(output)
 
     def getvisc(self, thermo_df, Nskip, dt, NCORES):
-
-        p=Pool(NCORES)
-
         numtimesteps = len(thermo_df['Pxy'])
         a1=thermo_df['Pxy'][Nskip:]
         a2=thermo_df['Pxz'][Nskip:]
@@ -121,15 +115,16 @@ class ViscCalc():
         a4=thermo_df['Pxx'][Nskip:]-thermo_df['Pyy'][Nskip:]
         a5=thermo_df['Pyy'][Nskip:]-thermo_df['Pzz'][Nskip:]
         a6=thermo_df['Pxx'][Nskip:]-thermo_df['Pzz'][Nskip:]
-        array_array=[a1,a2,a3,a4,a5,a6]
-        pv=p.map(autocorrelate,array_array)
+        pv = []
+        for a in [a1,a2,a3,a4,a5,a6]:
+            pv.append(correlationfunction(a,a))
         autocorrelation = (pv[0]+pv[1]+pv[2])/6+(pv[3]+pv[4]+pv[5])/12  
 
         temp=np.mean(thermo_df['Temp'][Nskip:])
 
+
         visco = (cumtrapz(autocorrelation,thermo_df['Step'][:len(autocorrelation)]))*dt*10**-12*1000*101325.**2*thermo_df['Volume'].iloc[-1]*10**-30/(1.38*10**-23*temp)
         Time = np.array(thermo_df['Step'][:len(autocorrelation)-1])*dt
-        p.close()
 
         return (Time,visco,autocorrelation)
 

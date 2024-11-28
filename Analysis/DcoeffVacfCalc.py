@@ -3,12 +3,12 @@ import sys,copy
 from collections import defaultdict
 from scipy.integrate import cumtrapz
 from OutputInfo import ReadBox, LammpsMDInfo
-from Analysis.utils import autocorrelate
+from Analysis.utils import correlationfunction
 from Analysis.fit import fit
 
 class DcoeffVacfCalc():
 
-    def runDcoeffVacf(self,fileprefix,namemoltype,Nmd,Nskip,interval,use_double_exp,logname='log.lammps',velname='dump.vel',output={},popt2=None,endt=None,std_perc=None,NCORES=1,ver=1):
+    def runDcoeffVacf(self,fileprefix,namemoltype,Nmd,Nskip,interval,use_double_exp,logname='log.lammps',velname='dump.vel',output={},popt2=None,endt=None,std_perc=None,ver=1):
         """
         This function calculates average and standard deviation of the diffusion coefficient through velosity autocorrelation function and fit the result with 
         single or double-exponential function.
@@ -50,9 +50,6 @@ class DcoeffVacfCalc():
 
                 if endt=None, then use std_prec, if std_prec=None, then std_prec=0.4
             
-            NCORES : int, optional
-                should be smaller than core number
-            
             ver: int, optional
                 if ver>1, output the progress
         """
@@ -73,7 +70,7 @@ class DcoeffVacfCalc():
         nummoltype = np.unique(atom_type,return_counts=True)[1]
 
         #calculate
-        (Time, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval, NCORES)
+        (Time, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval)
 
         trjlen = len(Time)
         Ndim = vel.shape[0]
@@ -94,7 +91,7 @@ class DcoeffVacfCalc():
             velosity = ReadBox.extract_dump_data(dumpinfo,properties)
             vel = velosity.transpose(2,1,0)
 
-            (_, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval, NCORES)
+            (_, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval)
 
             if dcoeffo.shape[-1] < trjlen:
                 trjlen = dcoeffo.shape[-1]
@@ -129,9 +126,7 @@ class DcoeffVacfCalc():
         output = self.append_dict(Time,namemoltype, output, vacf, vacf_mean, dcoeff, ave_dcoeff, stddev_dcoeff, Value, fitcurve)
         return output
     
-    def getdcoeff(self, vel, Nskip, dt, nummoltype, dump_frec, interval, NCORES):
-
-        p=Pool(NCORES)
+    def getdcoeff(self, vel, Nskip, dt, nummoltype, dump_frec, interval):
 
         vel = vel[:,:,Nskip:]
         Ndim = vel.shape[0]
@@ -146,7 +141,7 @@ class DcoeffVacfCalc():
                 atomindex_end += num
                 tmp_autocorrelation = np.zeros(Ndumps)
                 for atomindex in range(atomindex_start, atomindex_end):
-                    atomindex_autocorrelation = autocorrelate(vel[d, atomindex, :])
+                    atomindex_autocorrelation = correlationfunction(vel[d, atomindex, :],vel[d, atomindex, :])
 
                     tmp_autocorrelation += atomindex_autocorrelation
 
@@ -156,7 +151,6 @@ class DcoeffVacfCalc():
                 
         diffuso = cumtrapz(autocorrelation)*dt/300000000
         Time = np.arange(diffuso.shape[2])*dt*dump_frec*interval
-        p.close()
 
         return (Time, diffuso, autocorrelation)
     
