@@ -1,7 +1,7 @@
-class write_box():
+class write_box:
     """
     # Output absolute coordinates file only
-    
+
     Parameters:
         output_filename: str
             The name of the output file.
@@ -20,8 +20,8 @@ class write_box():
             {'element A': 1, 'element B': 2,...}
     Returns:
     """
-    
-    def __init__(self, filename, atoms_types, num_atoms, lattice_constant = None, coordinates = None, ele_name_idx = None):
+
+    def __init__(self, filename, atoms_types, num_atoms, lattice_constant=None, coordinates=None, ele_name_idx=None):
         self.filename = filename
         self.atoms_types = atoms_types
         self.num_atoms = num_atoms
@@ -34,58 +34,57 @@ class write_box():
         Write a LAMMPS data file, single frame.
         """
         ret = ""
-        ret += f'LAMMPS data file for '
+        ret += f"LAMMPS data file for "
         for element, number in zip(self.atoms_types, self.num_atoms):
-            ret += f'{number} {element} '
+            ret += f"{number} {element} "
         ret = ret.rstrip()  # 移除末尾的空格
-        ret += '\n\n'
+        ret += "\n\n"
 
         num_unique_elements = len(set(self.atoms_types))
-        ret += f'{sum(self.num_atoms)} atoms\n'
-        ret += f'{num_unique_elements} atom types\n\n'
-        ret += f'0.0 {self.lattice_constant[0]} xlo xhi\n'
-        ret += f'0.0 {self.lattice_constant[1]} ylo yhi\n'
-        ret += f'0.0 {self.lattice_constant[2]} zlo zhi\n\n'
-        ret += 'Atoms\n\n'
+        ret += f"{sum(self.num_atoms)} atoms\n"
+        ret += f"{num_unique_elements} atom types\n\n"
+        ret += f"0.0 {self.lattice_constant[0]} xlo xhi\n"
+        ret += f"0.0 {self.lattice_constant[1]} ylo yhi\n"
+        ret += f"0.0 {self.lattice_constant[2]} zlo zhi\n\n"
+        ret += "Atoms\n\n"
 
         atom_id = 1
         for element, number in zip(self.atoms_types, self.num_atoms):
             element_type = self.ele_name_idx[element]
             for _ in range(number):
                 x, y, z = self.coordinates[atom_id - 1]
-                ret += f'{atom_id} {element_type} {x:.4f} {y:.4f} {z:.4f} # {element}\n'
+                ret += f"{atom_id} {element_type} {x:.4f} {y:.4f} {z:.4f} # {element}\n"
                 atom_id += 1
 
-        with open(self.filename, 'w') as f:
+        with open(self.filename, "w") as f:
             f.write(ret)
 
     def write_vasp_poscar_file(self):
         """
         Write a VASP POSCAR file, single frame.
         """
-        
+
         ret = ""
-        ret += 'whatever\n' 
-        ret += '1.0\n' 
-        ret += f'{self.lattice_constant[0]} 0.0 0.0\n'
-        ret += f'0.0 {self.lattice_constant[1]} 0.0\n'
-        ret += f'0.0 0.0 {self.lattice_constant[2]}\n'
-        ret += ' '.join(self.atoms_types) + '\n' 
-        ret += ' '.join(map(str, self.num_atoms)) + '\n'  
-        ret += 'Cartesian\n'
-        
+        ret += "whatever\n"
+        ret += "1.0\n"
+        ret += f"{self.lattice_constant[0]} 0.0 0.0\n"
+        ret += f"0.0 {self.lattice_constant[1]} 0.0\n"
+        ret += f"0.0 0.0 {self.lattice_constant[2]}\n"
+        ret += " ".join(self.atoms_types) + "\n"
+        ret += " ".join(map(str, self.num_atoms)) + "\n"
+        ret += "Cartesian\n"
+
         atom_id = 1
         for element, number in zip(self.atoms_types, self.num_atoms):
             for _ in range(number):
                 x, y, z = self.coordinates[atom_id - 1]
-                ret += f'{x:.6f} {y:.6f} {z:.6f}\n'
+                ret += f"{x:.6f} {y:.6f} {z:.6f}\n"
                 atom_id += 1
 
-        with open(self.filename, 'w') as f:
+        with open(self.filename, "w") as f:
             f.write(ret)
-            
-            
-    def write_lammps_trj_file(self,frames):
+
+    def write_lammps_trj_file(self, frames):
         """
         Write a LAMMPS trajectory (.lammpstrj) file with multiple frames.
 
@@ -95,9 +94,9 @@ class write_box():
                 - np.ndarray: A two-dimensional array of floats with shape (sum(num_atoms), 3), coordinates.
                 - np.ndarray: A one-dimensional array of floats with shape (3,), cell_length.
         """
-        
+
         ret = ""
-        
+
         for step, frame in enumerate(frames):
 
             coordinates, cell_length = frame[0], frame[1]
@@ -116,8 +115,8 @@ class write_box():
                 element_type = self.ele_name_idx[element]
                 for _ in range(number):
                     x, y, z = coordinates[atom_id - 1]
-                    ret += f'{atom_id} {element_type} {x:.4f} {y:.4f} {z:.4f} # {element}\n'
+                    ret += f"{atom_id} {element_type} {x:.4f} {y:.4f} {z:.4f} # {element}\n"
                     atom_id += 1
 
-        with open(self.filename, 'w') as f:
+        with open(self.filename, "w") as f:
             f.write(ret)

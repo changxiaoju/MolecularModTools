@@ -1,5 +1,6 @@
-import os,re
+import os, re
 import numpy as np
+
 
 class VaspOutcarInfo:
     def __init__(self, path, NPT=False):
@@ -22,7 +23,7 @@ class VaspOutcarInfo:
         Reads basic information such as time step, element masses, sigma, and volume from the OUTCAR file.
         If NPT is False, it also calculates density based on a single volume.
         """
-        outcar_file = os.path.join(self.path, 'OUTCAR')
+        outcar_file = os.path.join(self.path, "OUTCAR")
 
         if not os.path.exists(outcar_file):
             print("OUTCAR file not found.")
@@ -34,7 +35,7 @@ class VaspOutcarInfo:
 
             if self.NPT:
                 foundvolume = True
-                
+
             while not (foundsigma and foundelemass and foundelecount and foundtimestep and foundvolume):
                 line = outcar.readline()
 
@@ -42,12 +43,12 @@ class VaspOutcarInfo:
                     break
 
                 if self.time_step is None and "POTIM" in line:
-                    match = re.search(r'=\s*([\d.]+)', line)
+                    match = re.search(r"=\s*([\d.]+)", line)
                     self.time_step = float(match.group(1))
                     foundtimestep = True
 
                 if self.sigma is None and "Fermi-smearing in eV        SIGMA" in line:
-                    match = re.search(r'=\s*([\d.]+)', line)
+                    match = re.search(r"=\s*([\d.]+)", line)
                     self.sigma = float(match.group(1))
                     foundsigma = True
 
@@ -80,11 +81,11 @@ class VaspOutcarInfo:
 
     def thermo_info(self):
         """
-        Reads thermodynamic information such as temperature, volume, energy, pressure, 
+        Reads thermodynamic information such as temperature, volume, energy, pressure,
         and optionally atomic positions and forces from the OUTCAR file.
         If NPT is True, it calculates density based on varying volumes.
         """
-        outcar_file = os.path.join(self.path, 'OUTCAR')
+        outcar_file = os.path.join(self.path, "OUTCAR")
         temperature = []
         pressure = []
         energy = []
@@ -95,8 +96,8 @@ class VaspOutcarInfo:
             print("OUTCAR file not found.")
             return None
 
-        with open(outcar_file, 'r') as outcar:
-            reading_position_force = False  
+        with open(outcar_file, "r") as outcar:
+            reading_position_force = False
             temp_positions, temp_forces = [], []
 
             for line in outcar:
@@ -114,7 +115,7 @@ class VaspOutcarInfo:
                     next(outcar)  # Skip separator line
                     continue
                 if reading_position_force:
-                    if '------' in line:
+                    if "------" in line:
                         positions.append(np.array(temp_positions))
                         forces.append(np.array(temp_forces))
                         temp_positions, temp_forces = [], []

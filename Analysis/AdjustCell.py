@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class adjust_cell:
     def __init__(self, lattice_constant, coordinates):
         """
@@ -40,4 +41,3 @@ class adjust_cell:
                     new_coordinates.extend(translated_coordinates)
 
         return new_lattice, np.array(new_coordinates)
-

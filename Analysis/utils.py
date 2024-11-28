@@ -1,6 +1,7 @@
 import scipy.signal as scp_signal
 import numpy as np
 
+
 def correlationfunction(At, Bt):
     """
     Calculate the correlation function between :math:`\\mathbf{A}(t)` and :math:`\\mathbf{B}(t)` using
