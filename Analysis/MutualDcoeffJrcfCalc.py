@@ -27,7 +27,8 @@ class MutualDcoeffJrcfCalc:
         ver=1,
     ):
         """
-        This function calculates average and standard deviation of the diffusion coefficient through velosity autocorrelation function and fit the result with
+        This function calculates average and standard deviation of the mutual diffusion coefficient through 
+        relative particle current jr correlation function and fit the result with
         single or double-exponential function.
 
             Parameters:
@@ -193,7 +194,7 @@ class MutualDcoeffJrcfCalc:
             atomindex_start += num
 
         # Calculate relative particle current jr, eq.(4.4) in Zhou J Phs Chem
-        # Though for better adaptability of the module J eq.(3.5) is calculated,
+        # Though for better adaptability of the module, J_flux eq.(3.5) is calculated,
         # current module can only compute binary mixed systems
         jr = np.zeros((Nmoltype - 1, Ndim, Ndumps))
         J_flux = np.zeros((Nmoltype - 1, Ndim, Ndumps))
