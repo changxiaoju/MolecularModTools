@@ -73,7 +73,7 @@ class ViscCalc:
         Nsteps, dt, dump_frec, thermo_frec = LammpsMDInfo.basic_info(logfilename)
 
         # calculate
-        (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt, NCORES)
+        (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt)
         trjlen = len(Time)
         viscosity = np.zeros((Nmd, trjlen))
         sacf = np.zeros((Nmd, trjlen + 1))
@@ -85,7 +85,7 @@ class ViscCalc:
         for i in range(1, Nmd):
             logfilename = fileprefix + str(i).zfill(3) + "/" + logname
             thermo_df = LammpsMDInfo.thermo_info(logfilename)
-            (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt, NCORES)
+            (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt)
             if len(visco) < trjlen:
                 trjlen = len(visco)
             viscosity[i, :trjlen] = visco
@@ -119,7 +119,7 @@ class ViscCalc:
 
         return output
 
-    def getvisc(self, thermo_df, Nskip, dt, NCORES):
+    def getvisc(self, thermo_df, Nskip, dt):
         numtimesteps = len(thermo_df["Pxy"])
         a1 = thermo_df["Pxy"][Nskip:]
         a2 = thermo_df["Pxz"][Nskip:]
