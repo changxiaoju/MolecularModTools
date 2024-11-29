@@ -96,6 +96,8 @@ def thermo_info(log_file):
             df_list.append(process_chunk(chunk))
 
     df = pd.concat(df_list, ignore_index=True)
-    df = df[~df.applymap(lambda x: isinstance(x, str)).any(axis=1)]  # remove rows with strings
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna()
 
     return df
