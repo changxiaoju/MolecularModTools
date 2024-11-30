@@ -186,8 +186,9 @@ class DcoeffVacfCalc:
                 autocorrelation[typeindex, -1, :] += tmp_autocorrelation / num
                 atomindex_start += num
 
-        diffuso = cumtrapz(autocorrelation) * dt / 300000000
-        Time = np.arange(diffuso.shape[2]) * dt * dump_frec * interval
+        Dt = dt * dump_frec * interval
+        diffuso = cumtrapz(autocorrelation) * Dt / 300000000  # m^2/s,  (A^2/ps)/3 = 10^(-20)/10^(-12)/3 = 1/(3*10^8)
+        Time = np.arange(diffuso.shape[2]) * Dt
 
         return (Time, diffuso, autocorrelation)
 

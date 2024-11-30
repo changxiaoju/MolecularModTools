@@ -134,6 +134,8 @@ class ViscCalc:
 
         temp = np.mean(thermo_df["Temp"][Nskip:])
 
+        # Dt = dt * dump_frec
+        # Moving forward, we will directly use 'Step' in calculations, inherently including 'dump_frec', thus rendering this step unnecessary
         # fmt: off
         visco = (cumtrapz(autocorrelation,
                           thermo_df['Step'][:len(autocorrelation)]))*dt*10**-12*1000*101325.**2*thermo_df['Volume'].iloc[-1]*10**-30/(1.38*10**-23*temp)

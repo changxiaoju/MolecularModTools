@@ -27,7 +27,7 @@ class MutualDcoeffJrcfCalc:
         ver=1,
     ):
         """
-        This function calculates average and standard deviation of the mutual diffusion coefficient through 
+        This function calculates average and standard deviation of the mutual diffusion coefficient through
         relative particle current jr correlation function and fit the result with
         single or double-exponential function.
 
@@ -218,8 +218,9 @@ class MutualDcoeffJrcfCalc:
 
         # Calculate binary mutual diffusion coefficient, eq.(4.5) in Zhou J Phs Chem
         const = 3 * nummoltype.sum() * molconc.prod()
-        mutual_diffuso = cumtrapz(correlation) * dt / const / 1e8
-        Time = np.arange(mutual_diffuso.shape[2]) * dt * dump_frec * interval
+        Dt = dt * dump_frec * interval
+        mutual_diffuso = cumtrapz(correlation) * Dt / const / 1e8
+        Time = np.arange(mutual_diffuso.shape[2]) * Dt
 
         # The reason for not outputting J_flux is that it is not involved in the diffusion matrix calculation
         # in the binary system, the ternary part of the calculation is not written,
