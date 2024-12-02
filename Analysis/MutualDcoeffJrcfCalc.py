@@ -92,7 +92,6 @@ class MutualDcoeffJrcfCalc:
 
         velfilename = fileprefix + "000/" + velname
         header, frames, atom_type = ReadBox.read_lammps_dump(velfilename, interval)
-        print(len(frames))
         steps, dumpinfo, bounds_matrices = zip(*frames)
         velosity = ReadBox.extract_dump_data(dumpinfo, properties)
         vel = velosity.transpose(2, 1, 0)
@@ -200,14 +199,12 @@ class MutualDcoeffJrcfCalc:
         # Though for better adaptability of the module, J_flux eq.(3.5) is calculated,
         # current module can only compute binary mixed systems
         jr = np.zeros((Nmoltype - 1, Ndim, Ndumps))
-        print(jr.shape)
         J_flux = np.zeros((Nmoltype - 1, Ndim, Ndumps))
         m_bar = molmass @ molconc
         for i, m_alpha in enumerate(molmass[:-1]):
             for ii, m_beta in enumerate(molmass):
                 delta_ab = 1 * (m_beta == m_alpha)
                 jr[i, :, :] += (delta_ab - molconc[i]) * j[ii, :, :]
-                print(jr)
                 J_flux[i, :, :] += (m_bar * delta_ab - molconc[i] * m_beta) * j[ii, :, :]
             J_flux[i, :, :] *= m_alpha / m_bar
 
@@ -217,8 +214,6 @@ class MutualDcoeffJrcfCalc:
         for i, jr1 in enumerate(jr):
             for ii, jr2 in enumerate(jr):
                 for d in range(Ndim):
-                    print(jr1[d, :], jr2[d, :])
-                    print(jr)
                     correlation[indx, d, :] = correlationfunction(jr1[d, :], jr2[d, :])
                     correlation[indx, -1, :] += correlation[indx, d, :]  # a dim for total correlation
             indx += 1
