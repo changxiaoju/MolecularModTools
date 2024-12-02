@@ -103,7 +103,7 @@ def read_lammpstrj_dump(filename, interval=1):
         filename : str
         interval : int, optional
             Interval to control how often frames are read.
-            Default is 1, meaning read every frame.
+            Default is 1, meaning read every frame in dump file.
 
     Returns:
         frames : list of tuples
@@ -118,6 +118,7 @@ def read_lammpstrj_dump(filename, interval=1):
 
     with open(filename, "r") as lammpstrj_dump_file:
 
+        steps = []
         while True:
             line = lammpstrj_dump_file.readline()
             if not line:
@@ -125,9 +126,10 @@ def read_lammpstrj_dump(filename, interval=1):
 
             if "ITEM: TIMESTEP" in line:
                 step = int(lammpstrj_dump_file.readline())
+                steps.append(step)
                 lammpstrj_dump_file.readline()  # Skip ITEM: NUMBER OF ATOMS line
 
-                if step % interval != 0:
+                if (len(step) - 1) % interval != 0:
                     nn = int(lammpstrj_dump_file.readline())
                     for _ in range(5 + nn):  # Skip the rest of this timestep
                         lammpstrj_dump_file.readline()
@@ -229,7 +231,7 @@ def read_lammps_dump(filename, interval=1):
         file : str
         interval : int, optional
             Interval to control how often frames are read.
-            Default is 1, meaning read every frame.
+            Default is 1, meaning read every frame in dump file.
 
     Returns:
         frames : list of tuples
@@ -243,16 +245,18 @@ def read_lammps_dump(filename, interval=1):
 
     with open(filename, "r") as lammps_dump_file:
 
+        steps = []
         while True:
+
             line = lammps_dump_file.readline()
             if not line:
                 break  # End of file reached
-
             if "ITEM: TIMESTEP" in line:
                 step = int(lammps_dump_file.readline())
+                steps.append(step)
                 lammps_dump_file.readline()  # Skip ITEM: NUMBER OF ATOMS line
 
-                if step % interval != 0:
+                if (len(steps) - 1) % interval != 0:  # Subtract one is to skip the zeroth step
                     nn = int(lammps_dump_file.readline())
                     for _ in range(5 + nn):  # Skip the rest of this timestep
                         lammps_dump_file.readline()

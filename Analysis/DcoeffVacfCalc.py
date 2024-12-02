@@ -40,7 +40,10 @@ class DcoeffVacfCalc:
                 num of md
 
             Nskip: int
-                initial lines ignored during the calculation
+                initial frames ignored during the calculation.
+                Note that here is the number of frames skipped after reading the box,
+                the interval parameter in "reading box" should be considered.
+
 
             interval: int
                 reading interval of velosity dump data
