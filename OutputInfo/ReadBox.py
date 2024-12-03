@@ -129,7 +129,7 @@ def read_lammpstrj_dump(filename, interval=1):
                 steps.append(step)
                 lammpstrj_dump_file.readline()  # Skip ITEM: NUMBER OF ATOMS line
 
-                if (len(step) - 1) % interval != 0:
+                if (len(step) - 1) % interval != 0:  # Subtract one is to consider the zeroth step
                     nn = int(lammpstrj_dump_file.readline())
                     for _ in range(5 + nn):  # Skip the rest of this timestep
                         lammpstrj_dump_file.readline()
@@ -256,12 +256,11 @@ def read_lammps_dump(filename, interval=1):
                 steps.append(step)
                 lammps_dump_file.readline()  # Skip ITEM: NUMBER OF ATOMS line
 
-                if (len(steps) - 1) % interval != 0:  # Subtract one is to skip the zeroth step
+                if (len(steps) - 1) % interval != 0:  # Subtract one is to consider the zeroth step
                     nn = int(lammps_dump_file.readline())
                     for _ in range(5 + nn):  # Skip the rest of this timestep
                         lammps_dump_file.readline()
                     continue
-
                 num_atom = int(lammps_dump_file.readline())
                 box_bounds_line = lammps_dump_file.readline()
                 is_triclinic = "xy" in box_bounds_line

@@ -31,7 +31,8 @@ class fit:
                 else:
                     cut += 1
         else:
-            cut = np.where(time == endt)[0][0]
+            diff = np.abs(time - endt)
+            cut = np.argmin(diff)
 
         if use_double_exp:
             # Use double exponential fit
