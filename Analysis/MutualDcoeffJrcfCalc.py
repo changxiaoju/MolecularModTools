@@ -152,9 +152,10 @@ class MutualDcoeffJrcfCalc:
 
         Value = np.zeros((ave_mutual_dcoeff.shape[0], ave_mutual_dcoeff.shape[1]))
         fitcurve = np.zeros_like(ave_mutual_dcoeff)
+        fitcut = np.zeros_like(Value)
         for i in range(ave_mutual_dcoeff.shape[0]):
             for j in range(ave_mutual_dcoeff.shape[1]):
-                Value[i, j], fitcurve[i, j, :] = fitdcoeff.fit(
+                Value[i, j], fitcurve[i, j, :], fitcut[i, j] = fitdcoeff.fit(
                     Time,
                     ave_mutual_dcoeff[i, j],
                     stddev_mutual_dcoeff[i, j],
@@ -174,6 +175,7 @@ class MutualDcoeffJrcfCalc:
             stddev_mutual_dcoeff,
             Value,
             fitcurve,
+            fitcut,
         )
 
         return output
@@ -240,6 +242,7 @@ class MutualDcoeffJrcfCalc:
         stddev_mutual_dcoeff,
         Value,
         fitcurve,
+        fitcut,
     ):
         if "MutualDcoeffJrcf" not in output:
             output["MutualDcoeffJrcf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
@@ -255,4 +258,6 @@ class MutualDcoeffJrcfCalc:
                 output["MutualDcoeffJrcf"]["Average Integral"][i][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
                 output["MutualDcoeffJrcf"]["Standard Deviation"][i][dim[j]] = copy.deepcopy(stddev_mutual_dcoeff[i, j])
                 output["MutualDcoeffJrcf"]["Fit"][i][dim[j]] = copy.deepcopy(fitcurve[i, j])
+                output["MutualDcoeffJrcf"]["Fit Cut"][i][dim[j]] = copy.deepcopy(fitcut[i, j])
+
         return output

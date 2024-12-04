@@ -140,9 +140,10 @@ class DcoeffVacfCalc:
 
         Value = np.zeros((ave_dcoeff.shape[0], ave_dcoeff.shape[1]))
         fitcurve = np.zeros_like(ave_dcoeff)
+        fitcut = np.zeros_like(Value)
         for i in range(ave_dcoeff.shape[0]):
             for j in range(ave_dcoeff.shape[1]):
-                Value[i, j], fitcurve[i, j, :] = fitdcoeff.fit(
+                Value[i, j], fitcurve[i, j, :], fitcut[i, j] = fitdcoeff.fit(
                     Time,
                     ave_dcoeff[i, j],
                     stddev_dcoeff[i, j],
@@ -163,6 +164,7 @@ class DcoeffVacfCalc:
             stddev_dcoeff,
             Value,
             fitcurve,
+            fitcut,
         )
         return output
 
@@ -207,6 +209,7 @@ class DcoeffVacfCalc:
         stddev_dcoeff,
         Value,
         fitcurve,
+        fitcut,
     ):
         if "DcoeffVacf" not in output:
             output["DcoeffVacf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
@@ -222,4 +225,6 @@ class DcoeffVacfCalc:
                 output["DcoeffVacf"]["Average Integral"][namemoltype[i]][dim[j]] = copy.deepcopy(ave_dcoeff[i, j])
                 output["DcoeffVacf"]["Standard Deviation"][namemoltype[i]][dim[j]] = copy.deepcopy(stddev_dcoeff[i, j])
                 output["DcoeffVacf"]["Fit"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcurve[i, j])
+                output["DcoeffVacf"]["Fit Cut"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcut[i, j])
+
         return output

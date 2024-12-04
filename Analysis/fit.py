@@ -61,4 +61,4 @@ class fit:
             fit = self.singleexp(time, *popt2)
             Value = popt2[0]
 
-        return (Value, fit)
+        return (Value, fit, cut)

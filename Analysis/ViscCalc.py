@@ -109,13 +109,14 @@ class ViscCalc:
                 popt2 = [2e-3, 5e-2, 2e3, 2e2]
             else:
                 popt2 = [1e-4, 1e2]
-        Value, fitcurve = fitvisc.fit(Time, ave_visc, stddev_visc, use_double_exp, popt2, std_perc, endt)
+        Value, fitcurve, fitcut = fitvisc.fit(Time, ave_visc, stddev_visc, use_double_exp, popt2, std_perc, endt)
 
         output["Viscosity"]["Integrals"] = viscosity
         output["Viscosity"]["Average Value"] = Value
         output["Viscosity"]["Average Integral"] = ave_visc
         output["Viscosity"]["Standard Deviation"] = stddev_visc
         output["Viscosity"]["Fit"] = fitcurve
+        output["Viscosity"]["Fit Cut"] = fitcut
 
         return output
 
