@@ -213,13 +213,13 @@ class DcoeffVacfCalc:
     ):
         if "DcoeffVacf" not in output:
             output["DcoeffVacf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-        output["DcoeffVacf"]["units"] = "m^2/s"
+        output["DcoeffVacf"]["Units"] = "m^2/s"
         output["DcoeffVacf"]["Time"] = Time
         dim = ["x", "y", "z", "total"]
         for i in range(ave_dcoeff.shape[0]):
             for j in range(ave_dcoeff.shape[1]):
-                output["DcoeffVacf"]["vacf"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf[i, j])
-                output["DcoeffVacf"]["vacf Average"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf_mean[i, j])
+                output["DcoeffVacf"]["VACF"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf[i, j])
+                output["DcoeffVacf"]["VACF Average"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf_mean[i, j])
                 output["DcoeffVacf"]["Integrals"][namemoltype[i]][dim[j]] = copy.deepcopy(dcoeff[i, j])
                 output["DcoeffVacf"]["Average Value"][namemoltype[i]][dim[j]] = copy.deepcopy(Value[i, j])
                 output["DcoeffVacf"]["Average Integral"][namemoltype[i]][dim[j]] = copy.deepcopy(ave_dcoeff[i, j])

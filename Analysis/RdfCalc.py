@@ -135,10 +135,10 @@ class RdfCalc:
 
     def append_dict(self, radiuslist, g, output, namemoltype):
         output["RDF"] = {}
-        output["RDF"]["units"] = "unitless, angstroms"
+        output["RDF"]["Units"] = "unitless, angstroms"
         for i in range(0, len(namemoltype)):
             for j in range(i, len(namemoltype)):
                 if not all([v == 0 for v in g[i][j]]):
                     output["RDF"]["{0}-{1}".format(namemoltype[i], namemoltype[j])] = copy.deepcopy(g[i][j].tolist())
         if "distance" not in list(output["RDF"].keys()):
-            output["RDF"]["distance"] = copy.deepcopy(radiuslist.tolist())
+            output["RDF"]["Distance"] = copy.deepcopy(radiuslist.tolist())

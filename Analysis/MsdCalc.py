@@ -163,8 +163,8 @@ class MsdCalc:
     def append_dict(self, MSD, namemoltype, output, Time):
         # Write MSD to output dictionary
         output["MSD"] = {}
-        output["MSD"]["units"] = "Angstroms^2, ps"
+        output["MSD"]["Units"] = "Angstroms^2, ps"
         for i in range(0, len(namemoltype)):
             output["MSD"][namemoltype[i]] = copy.deepcopy(MSD[i].tolist())
 
-        output["MSD"]["time"] = copy.deepcopy(Time.tolist())
+        output["MSD"]["Time"] = copy.deepcopy(Time.tolist())

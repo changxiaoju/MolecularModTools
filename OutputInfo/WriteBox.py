@@ -1,3 +1,4 @@
+import numpy as np
 class write_box:
     """
     # Output absolute coordinates file only
@@ -84,9 +85,61 @@ class write_box:
         with open(self.filename, "w") as f:
             f.write(ret)
 
-    def write_lammps_trj_file(self, frames):
+    def write_lammps_trj_file(self, frames, property_names=None):
         """
-        Write a LAMMPS trajectory (.lammpstrj) file with multiple frames.
+        Write a LAMMPS trajectory file with multiple frames.
+
+        Parameters:
+            frames: list of tuples
+                every tuple contains two numpy arrays.
+                - np.ndarray: A two-dimensional array of floats with shape (sum(num_atoms), num of dump values), coordinates and other properties.
+                - np.ndarray: A one-dimensional array of floats with shape (3,), cell_length.
+            property_names: list or None
+                List of strings representing the names of the properties to be dumped along with x, y, z.
+                If None, defaults to ['x', 'y', 'z'].
+        """
+        if property_names is None:
+            property_names = ['x', 'y', 'z']
+
+        ret = ""
+
+        for step, frame in enumerate(frames):
+
+            coordinates_and_properties, cell_length = frame[0], frame[1]
+            num_dump_values = coordinates_and_properties.shape[1]
+
+            ret += f"ITEM: TIMESTEP\n{step}\n"
+            ret += "ITEM: NUMBER OF ATOMS\n"
+            ret += f"{sum(self.num_atoms)}\n"
+            ret += "ITEM: BOX BOUNDS pp pp pp\n"
+            ret += f"0.0 {cell_length[0]}\n"
+            ret += f"0.0 {cell_length[1]}\n"
+            ret += f"0.0 {cell_length[2]}\n"
+
+            header_line = "ITEM: ATOMS id type"
+            for name in property_names:
+                header_line += f" {name}"
+            header_line += "\n"
+            ret += header_line
+
+            atom_id = 1
+            for element, number in zip(self.atoms_types, self.num_atoms):
+                element_type = self.ele_name_idx[element]
+                for _ in range(number):
+                    data_line = f"{atom_id} {element_type}"
+                    for value in coordinates_and_properties[atom_id - 1]:
+                        data_line += f" {value:.4f}"
+                    data_line += f" # {element}\n"
+                    ret += data_line
+                    atom_id += 1
+
+        with open(self.filename, "w") as f:
+            f.write(ret)
+        
+
+    def write_xyz_file(self, frames):
+        """
+        Write a xyz trajectory file with multiple frames.
 
         Parameters:
             frames: list of tuples
@@ -97,25 +150,19 @@ class write_box:
 
         ret = ""
 
-        for step, frame in enumerate(frames):
+        for frame in frames:
 
-            coordinates, cell_length = frame[0], frame[1]
+            coordinates, bounds_matrix = frame[0], frame[1]
+            cell_length = np.diag(bounds_matrix)
 
-            ret += f"ITEM: TIMESTEP\n{step}\n"
-            ret += "ITEM: NUMBER OF ATOMS\n"
             ret += f"{sum(self.num_atoms)}\n"
-            ret += "ITEM: BOX BOUNDS pp pp pp\n"
-            ret += f"0.0 {cell_length[0]}\n"
-            ret += f"0.0 {cell_length[1]}\n"
-            ret += f"0.0 {cell_length[2]}\n"
-            ret += "ITEM: ATOMS id type x y z\n"
+            ret += f"{cell_length[0]} {cell_length[1]} {cell_length[2]}\n"
 
             atom_id = 1
             for element, number in zip(self.atoms_types, self.num_atoms):
-                element_type = self.ele_name_idx[element]
                 for _ in range(number):
                     x, y, z = coordinates[atom_id - 1]
-                    ret += f"{atom_id} {element_type} {x:.4f} {y:.4f} {z:.4f} # {element}\n"
+                    ret += f"{element} {x:.4f} {y:.4f} {z:.4f}\n"
                     atom_id += 1
 
         with open(self.filename, "w") as f:

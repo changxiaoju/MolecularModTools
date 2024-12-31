@@ -59,13 +59,14 @@ def read_xyz_frame(filename):
         file : str
 
     Returns:
-        atom_type : list
-        np.array(coordinate) : num_atom*3
-        np.array(cell_length) : array,1*3
+        coordinates: list of two-dimensional arrays with shape (num_atom,3)
+        cell_lengths: list of one-dimensional arrays with shape (3,)
+
     """
 
     with open(filename, "r") as xyz_file:
-        frames = []
+        coordinates = []
+        cell_lengths = []
 
         while True:
             try:
@@ -75,6 +76,7 @@ def read_xyz_frame(filename):
                 except:
                     cell_length = None
 
+                cell_lengths.append(cell_length)
                 coordinate = []
                 atom_type = []
 
@@ -83,15 +85,15 @@ def read_xyz_frame(filename):
                     atom_type.append(atom_info[0])
                     coordinate.append([float(coord) for coord in atom_info[1:]])
 
-                frames.append(np.array(coordinate))
+                coordinates.append(np.array(coordinate))
 
             except:
-                print(f"reading frame step {len(frames)}")
+                print(f"reading frame step {len(coordinates)}")
                 break
-    if len(frames) == 1:
-        return frames[0], cell_length, atom_type
+    if len(coordinates) == 1:
+        return coordinates[0], cell_length, atom_type
     else:
-        return frames, cell_length, atom_type
+        return coordinates, cell_lengths, atom_type
 
 
 def read_lammpstrj_dump(filename, interval=1):

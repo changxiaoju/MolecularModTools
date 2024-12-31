@@ -4,14 +4,13 @@ from multiprocessing import Pool
 from scipy.integrate import cumtrapz
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
-from scipy.constants import k
-
+from scipy.constants import k,eV
 from OutputInfo import LammpsMDInfo
 
 
-class ViscCalc:
+class TherCondCalc:
 
-    def runVisc(
+    def runTherCond(
         self,
         fileprefix,
         Nmd,
@@ -25,13 +24,13 @@ class ViscCalc:
         ver=1,
     ):
         """
-        This function calculates average and standard deviation of the viscosity and fit the result with
+        This function calculates average and standard deviation of the thermal conductivity and fit the result with
         single or double-exponential function.
 
             Parameters:
                 -----------
             thermo_df : DataFrame
-                thermo dataframe read from log file, to compute viscosity, it should contain pressure tensor
+                thermo dataframe read from log file, to compute thermal conductivity, it should contain heat flux named as c_J[1], c_J[2], c_J[3]
 
             fileprefix : str
 
@@ -64,8 +63,8 @@ class ViscCalc:
                 if ver>1, output the progress
         """
         # read
-        output["Viscosity"] = {}
-        output["Viscosity"]["Units"] = "mPa·s"
+        output["Thermal Conductivity"] = {}
+        output["Thermal Conductivity"]["Units"] = "W/(mK)"
         if fileprefix == None:
             fileprefix = "./"
 
@@ -74,76 +73,72 @@ class ViscCalc:
         Nsteps, dt, dump_frec, thermo_frec = LammpsMDInfo.basic_info(logfilename)
 
         # calculate
-        (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt)
+        (Time, thercondo, autocorrelation) = self.getthercond(thermo_df, Nskip, dt)
         trjlen = len(Time)
-        viscosity = np.zeros((Nmd, trjlen))
-        sacf = np.zeros((Nmd, trjlen + 1))
-        viscosity[0] = visco
-        sacf[0] = autocorrelation
+        thercond = np.zeros((Nmd, trjlen))
+        hcacf = np.zeros((Nmd, trjlen + 1))
+        thercond[0] = thercondo
+        hcacf[0] = autocorrelation
         if ver >= 1:
-            sys.stdout.write("Viscosity Trajectory 1 of {} complete\n".format(Nmd))
+            sys.stdout.write("Thermal Conductivity Trajectory 1 of {} complete\n".format(Nmd))
 
         for i in range(1, Nmd):
             logfilename = fileprefix + str(i).zfill(3) + "/" + logname
             thermo_df = LammpsMDInfo.thermo_info(logfilename)
-            (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt)
-            if len(visco) < trjlen:
-                trjlen = len(visco)
-            viscosity[i, :trjlen] = visco
-            sacf[i, : trjlen + 1] = autocorrelation
+            (Time, thercondo, autocorrelation) = self.getthercond(thermo_df, Nskip, dt)
+            if len(thercondo) < trjlen:
+                trjlen = len(thercondo)
+            thercond[i, :trjlen] = thercondo
+            hcacf[i, : trjlen + 1] = autocorrelation
             if ver >= 1:
-                sys.stdout.write("\rViscosity Trajectory {} of {} complete\n".format(i + 1, Nmd))
+                sys.stdout.write("\rThermal Conductivity Trajectory {} of {} complete\n".format(i + 1, Nmd))
         if ver >= 1:
             sys.stdout.write("\n")
 
-        output["Viscosity"]["Time"] = Time[:trjlen]
-        sacf_mean = np.mean(sacf, axis=0)
-        output["Viscosity"]["SACF"] = sacf
-        output["Viscosity"]["SACF Average"] = sacf_mean
+        output["Thermal Conductivity"]["Time"] = Time[:trjlen]
+        hcacf_mean = np.mean(hcacf, axis=0)
+        output["Thermal Conductivity"]["HCACF"] = hcacf
+        output["Thermal Conductivity"]["HCACF Average"] = hcacf_mean
 
         # fit
-        fitvisc = fit()
-        ave_visc = np.mean(viscosity, axis=0)
-        stddev_visc = np.std(viscosity, axis=0)
+        fitthercond = fit()
+        ave_thercond = np.mean(thercond, axis=0)
+        stddev_thercond = np.std(thercond, axis=0)
         if popt2 is None:
             if use_double_exp:
                 popt2 = [2e-3, 5e-2, 2e3, 2e2]
             else:
                 popt2 = [1e-4, 1e2]
-        Value, fitcurve, fitcut = fitvisc.fit(Time, ave_visc, stddev_visc, use_double_exp, popt2, std_perc, endt)
+        Value, fitcurve, fitcut = fitthercond.fit(Time, ave_thercond, stddev_thercond, use_double_exp, popt2, std_perc, endt)
 
-        output["Viscosity"]["Integrals"] = viscosity
-        output["Viscosity"]["Average Value"] = Value
-        output["Viscosity"]["Average Integral"] = ave_visc
-        output["Viscosity"]["Standard Deviation"] = stddev_visc
-        output["Viscosity"]["Fit"] = fitcurve
-        output["Viscosity"]["Fit Cut"] = fitcut
+        output["Thermal Conductivity"]["Integrals"] = thercond
+        output["Thermal Conductivity"]["Average Value"] = Value
+        output["Thermal Conductivity"]["Average Integral"] = ave_thercond
+        output["Thermal Conductivity"]["Standard Deviation"] = stddev_thercond
+        output["Thermal Conductivity"]["Fit"] = fitcurve
+        output["Thermal Conductivity"]["Fit Cut"] = fitcut
 
         return output
 
-    def getvisc(self, thermo_df, Nskip, dt):
+    def getthercond(self, thermo_df, Nskip, dt):
         numtimesteps = len(thermo_df["Pxy"])
-        a1 = thermo_df["Pxy"][Nskip:]
-        a2 = thermo_df["Pxz"][Nskip:]
-        a3 = thermo_df["Pyz"][Nskip:]
-        a4 = thermo_df["Pxx"][Nskip:] - thermo_df["Pyy"][Nskip:]
-        a5 = thermo_df["Pyy"][Nskip:] - thermo_df["Pzz"][Nskip:]
-        a6 = thermo_df["Pxx"][Nskip:] - thermo_df["Pzz"][Nskip:]
-        pv = []
-        for a in [a1, a2, a3, a4, a5, a6]:
-            pv.append(correlationfunction(a, a))
-        autocorrelation = (pv[0] + pv[1] + pv[2]) / 6 + (pv[3] + pv[4] + pv[5]) / 12
-
+        a1 = thermo_df["c_J[1]"][Nskip:]
+        a2 = thermo_df["c_J[2]"][Nskip:]
+        a3 = thermo_df["c_J[3]"][Nskip:]
+        aJ = []
+        for a in [a1, a2, a3]:
+            aJ.append(correlationfunction(a, a))
+        autocorrelation = (aJ[0] + aJ[1] + aJ[2]) / 3
         temp = np.mean(thermo_df["Temp"][Nskip:])
+        volume = np.mean(thermo_df["Volume"][Nskip:])
 
         # Dt = dt * dump_frec
         # Moving forward, we will directly use 'Step' in calculations, inherently including 'dump_frec', thus rendering this step unnecessary
         # fmt: off
-        visco = (cumtrapz(autocorrelation,
-                          thermo_df['Step'][:len(autocorrelation)]))*(1e5)**2*dt*(1e-12)*thermo_df['Volume'].iloc[-1]*(1e-30)/(k*temp)*(1e3)
-        print(visco)
-        # 1e5: bar to pascal; 1e-12: ps to s; 1e-30: Angstrom**3 to m**3; k: Boltzmann constant; 1e3: Pa*s to mPa*s
+        thercondo = (cumtrapz(autocorrelation,
+                          thermo_df['Step'][:len(autocorrelation)])) * dt/ (volume * temp * temp * k / eV) # kB unit: J/K --> eV/K
+        thercondo = thercondo *(eV / (1e-12 * 1e-10)) # eV/(ps*A*K) --> J/(s*m*K)
         # fmt: on
         Time = np.array(thermo_df["Step"][: len(autocorrelation) - 1]) * dt
 
-        return (Time, visco, autocorrelation)
+        return (Time, thercondo, autocorrelation)

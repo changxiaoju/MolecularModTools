@@ -246,13 +246,13 @@ class MutualDcoeffJrcfCalc:
     ):
         if "MutualDcoeffJrcf" not in output:
             output["MutualDcoeffJrcf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-        output["MutualDcoeffJrcf"]["units"] = "m^2/s"
+        output["MutualDcoeffJrcf"]["Units"] = "m^2/s"
         output["MutualDcoeffJrcf"]["Time"] = Time
         dim = ["x", "y", "z", "total"]
         for i in range(ave_mutual_dcoeff.shape[0]):
             for j in range(ave_mutual_dcoeff.shape[1]):
-                output["MutualDcoeffJrcf"]["Jrcf"][i][dim[j]] = copy.deepcopy(jrcf[i, j])
-                output["MutualDcoeffJrcf"]["Jrcf Average"][i][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
+                output["MutualDcoeffJrcf"]["JrCF"][i][dim[j]] = copy.deepcopy(jrcf[i, j])
+                output["MutualDcoeffJrcf"]["JrCF Average"][i][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
                 output["MutualDcoeffJrcf"]["Integrals"][i][dim[j]] = copy.deepcopy(mutual_dcoeff[i, j])
                 output["MutualDcoeffJrcf"]["Average Value"][i][dim[j]] = copy.deepcopy(Value[i, j])
                 output["MutualDcoeffJrcf"]["Average Integral"][i][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
