@@ -141,7 +141,6 @@ class ViscCalc:
         # fmt: off
         visco = (cumtrapz(autocorrelation,
                           thermo_df['Step'][:len(autocorrelation)]))*(1e5)**2*dt*(1e-12)*thermo_df['Volume'].iloc[-1]*(1e-30)/(k*temp)*(1e3)
-        print(visco)
         # 1e5: bar to pascal; 1e-12: ps to s; 1e-30: Angstrom**3 to m**3; k: Boltzmann constant; 1e3: Pa*s to mPa*s
         # fmt: on
         Time = np.array(thermo_df["Step"][: len(autocorrelation) - 1]) * dt
