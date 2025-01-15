@@ -106,7 +106,7 @@ class DcoeffVacfCalc:
         if ver >= 1:
             sys.stdout.write("Dcoeff Trajectory 1 of {} complete\n".format(Nmd))
 
-        for i in range(1, Nmd):
+        for i in range(0, Nmd):
             velfilename = fileprefix + str(i).zfill(3) + "/" + velname
             header, frames, atom_type = ReadBox.read_lammps_dump(velfilename, interval)
             steps, dumpinfo, bounds_matrices = zip(*frames)

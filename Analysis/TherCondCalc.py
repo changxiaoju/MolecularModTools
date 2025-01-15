@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from scipy.integrate import cumtrapz
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
-from scipy.constants import k,eV
+from scipy.constants import k, eV
 from OutputInfo import LammpsMDInfo
 
 
@@ -82,7 +82,7 @@ class TherCondCalc:
         if ver >= 1:
             sys.stdout.write("Thermal Conductivity Trajectory 1 of {} complete\n".format(Nmd))
 
-        for i in range(1, Nmd):
+        for i in range(0, Nmd):
             logfilename = fileprefix + str(i).zfill(3) + "/" + logname
             thermo_df = LammpsMDInfo.thermo_info(logfilename)
             (Time, thercondo, autocorrelation) = self.getthercond(thermo_df, Nskip, dt)
@@ -109,7 +109,9 @@ class TherCondCalc:
                 popt2 = [2e-3, 5e-2, 2e3, 2e2]
             else:
                 popt2 = [1e-4, 1e2]
-        Value, fitcurve, fitcut = fitthercond.fit(Time, ave_thercond, stddev_thercond, use_double_exp, popt2, std_perc, endt)
+        Value, fitcurve, fitcut = fitthercond.fit(
+            Time, ave_thercond, stddev_thercond, use_double_exp, popt2, std_perc, endt
+        )
 
         output["Thermal Conductivity"]["Integrals"] = thercond
         output["Thermal Conductivity"]["Average Value"] = Value

@@ -83,7 +83,7 @@ class ViscCalc:
         if ver >= 1:
             sys.stdout.write("Viscosity Trajectory 1 of {} complete\n".format(Nmd))
 
-        for i in range(1, Nmd):
+        for i in range(0, Nmd):
             logfilename = fileprefix + str(i).zfill(3) + "/" + logname
             thermo_df = LammpsMDInfo.thermo_info(logfilename)
             (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt)
