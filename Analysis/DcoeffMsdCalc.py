@@ -16,7 +16,7 @@ class DcoeffMsdCalc:
         for i in range(0, len(namemoltype)):
             MSD = output["MSD"][namemoltype[i]]
             lnMSD = np.log(MSD[1:])
-            time = output["MSD"]["time"]
+            time = output["MSD"]["Time"]
             lntime = np.log(time[1:])
             firststep = self.findlinearregion(lnMSD, lntime, dt, tol)
             diffusivity = self.getdiffusivity(time, MSD, firststep)

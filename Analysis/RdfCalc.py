@@ -27,8 +27,9 @@ class RdfCalc:
             Parameters:
                 -----------
 
-                comx, comy, comz : float
+                comx, comy, comz : np.array
                     The x, y, and z coordinates of the center of mass, respectively.
+                    shapes: (numsteps, moltype)
 
                 Lx, Ly, Lz : float
                     The dimensions of the simulation box in the x, y, and z directions.
