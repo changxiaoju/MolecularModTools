@@ -82,12 +82,11 @@ class TherCondCalc:
         if ver >= 1:
             sys.stdout.write("Thermal Conductivity Trajectory 1 of {} complete\n".format(Nmd))
 
-        for i in range(0, Nmd):
+        for i in range(1, Nmd):
             logfilename = fileprefix + str(i).zfill(3) + "/" + logname
             thermo_df = LammpsMDInfo.thermo_info(logfilename)
             (Time, thercondo, autocorrelation) = self.getthercond(thermo_df, Nskip, dt)
-            if len(thercondo) < trjlen:
-                trjlen = len(thercondo)
+            trjlen = len(Time)
             thercond[i, :trjlen] = thercondo
             hcacf[i, : trjlen + 1] = autocorrelation
             if ver >= 1:

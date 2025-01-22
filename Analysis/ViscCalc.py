@@ -81,18 +81,17 @@ class ViscCalc:
         viscosity[0] = visco
         sacf[0] = autocorrelation
         if ver >= 1:
-            sys.stdout.write("Viscosity Trajectory 1 of {} complete\n".format(Nmd))
+            sys.stdout.write("Viscosity 1 of {} complete\n".format(Nmd))
 
-        for i in range(0, Nmd):
+        for i in range(1, Nmd):
             logfilename = fileprefix + str(i).zfill(3) + "/" + logname
             thermo_df = LammpsMDInfo.thermo_info(logfilename)
             (Time, visco, autocorrelation) = self.getvisc(thermo_df, Nskip, dt)
-            if len(visco) < trjlen:
-                trjlen = len(visco)
+            trjlen = len(Time)
             viscosity[i, :trjlen] = visco
             sacf[i, : trjlen + 1] = autocorrelation
             if ver >= 1:
-                sys.stdout.write("\rViscosity Trajectory {} of {} complete\n".format(i + 1, Nmd))
+                sys.stdout.write("\rViscosity {} of {} complete\n".format(i + 1, Nmd))
         if ver >= 1:
             sys.stdout.write("\n")
 

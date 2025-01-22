@@ -26,7 +26,7 @@ class DcoeffVacfCalc:
         ver=1,
     ):
         """
-        This function calculates average and standard deviation of the diffusion coefficient through velosity autocorrelation function and fit the result with
+        This function calculates average and standard deviation of the diffusion coefficient through velocity autocorrelation function and fit the result with
         single or double-exponential function.
 
             Parameters:
@@ -46,7 +46,7 @@ class DcoeffVacfCalc:
 
 
             interval: int
-                reading interval of velosity dump data
+                reading interval of velocity dump data
 
             use_double_exp : bool
                 weather use double-exponential fit
@@ -87,8 +87,8 @@ class DcoeffVacfCalc:
         velfilename = fileprefix + "000/" + velname
         header, frames, atom_type = ReadBox.read_lammps_dump(velfilename, interval)
         steps, dumpinfo, bounds_matrices = zip(*frames)
-        velosity = ReadBox.extract_dump_data(dumpinfo, properties)
-        vel = velosity.transpose(2, 1, 0)
+        velocity = ReadBox.extract_dump_data(dumpinfo, properties)
+        vel = velocity.transpose(2, 1, 0)
         nummoltype = np.unique(atom_type, return_counts=True)[1]
 
         # calculate
@@ -106,18 +106,15 @@ class DcoeffVacfCalc:
         if ver >= 1:
             sys.stdout.write("Dcoeff Trajectory 1 of {} complete\n".format(Nmd))
 
-        for i in range(0, Nmd):
+        for i in range(1, Nmd):
             velfilename = fileprefix + str(i).zfill(3) + "/" + velname
             header, frames, atom_type = ReadBox.read_lammps_dump(velfilename, interval)
             steps, dumpinfo, bounds_matrices = zip(*frames)
-            velosity = ReadBox.extract_dump_data(dumpinfo, properties)
-            vel = velosity.transpose(2, 1, 0)
+            velocity = ReadBox.extract_dump_data(dumpinfo, properties)
+            vel = velocity.transpose(2, 1, 0)
 
-            (_, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval)
-
-            if dcoeffo.shape[-1] < trjlen:
-                trjlen = dcoeffo.shape[-1]
-
+            (Time, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval)
+            trjlen = len(Time)
             dcoeff[:, :, i, :trjlen] = dcoeffo
             vacf[:, :, i, : trjlen + 1] = autocorrelation
 

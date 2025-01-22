@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def read_XDATCAR_frame(filename, interval=1):
+def read_xdatcar_frame(filename, interval=1):
 
     frames = []
 

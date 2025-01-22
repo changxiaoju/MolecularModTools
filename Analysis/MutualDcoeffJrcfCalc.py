@@ -115,20 +115,18 @@ class MutualDcoeffJrcfCalc:
         if ver >= 1:
             sys.stdout.write("Mutual Dcoeff Trajectory 1 of {} complete\n".format(Nmd))
 
-        for i in range(0, Nmd):
+        for i in range(1, Nmd):
             velfilename = fileprefix + str(i).zfill(3) + "/" + velname
             header, frames, atom_type = ReadBox.read_lammps_dump(velfilename, interval)
             steps, dumpinfo, bounds_matrices = zip(*frames)
             velosity = ReadBox.extract_dump_data(dumpinfo, properties)
             vel = velosity.transpose(2, 1, 0)
 
-            (_, mutual_dcoeffo, correlation) = self.getmuldcoeff(
+            (Time, mutual_dcoeffo, correlation) = self.getmuldcoeff(
                 vel, Nskip, dt, nummoltype, dump_frec, interval, molmass
             )
 
-            if mutual_dcoeffo.shape[-1] < trjlen:
-                trjlen = mutual_dcoeffo.shape[-1]
-
+            trjlen = len(Time)
             mutual_dcoeff[:, :, i, :trjlen] = mutual_dcoeffo
             jrcf[:, :, i, : trjlen + 1] = correlation
 
