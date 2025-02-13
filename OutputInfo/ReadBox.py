@@ -1,8 +1,24 @@
 import numpy as np
+from typing import List, Dict, Tuple, Optional, Any, Union
 
 
-def read_xdatcar_frame(filename, interval=1):
+def read_xdatcar_frame(
+    filename: str,
+    interval: int = 1
+) -> Tuple[List[str], Union[Tuple[int, List[Dict], np.ndarray], List[Tuple[int, List[Dict], np.ndarray]]], List[str]]:
+    """
+    Read atomic coordinates from VASP XDATCAR file.
 
+    Parameters:
+        filename: Path to XDATCAR file
+        interval: Reading interval for frames
+
+    Returns:
+        Tuple containing:
+            - System info line
+            - Frame data (single frame or list of frames)
+            - Global atom types
+    """
     frames = []
 
     with open(filename, "r") as XDATCAR_file:
@@ -51,17 +67,18 @@ def read_xdatcar_frame(filename, interval=1):
         return frames, cell_vectors, num_atom
 
 
-def read_xyz_frame(filename):
+def read_xyz_frame(filename: str) -> Tuple[Union[np.ndarray, List[np.ndarray]], List[float], List[str]]:
     """
-    Read from xyz file.
+    Read atomic coordinates from xyz file.
 
     Parameters:
-        file : str
+        filename: Path to xyz file
 
     Returns:
-        coordinates: list of two-dimensional arrays with shape (num_atom,3)
-        cell_lengths: list of one-dimensional arrays with shape (3,)
-
+        Tuple containing:
+            - Coordinates (single frame or list of frames)
+            - Cell lengths 
+            - Atom type labels
     """
 
     with open(filename, "r") as xyz_file:
@@ -96,23 +113,19 @@ def read_xyz_frame(filename):
         return coordinates, cell_lengths, atom_type
 
 
-def read_lammpstrj_dump(filename, interval=1):
+def read_lammpstrj_dump(filename: str, interval: int = 1) -> Tuple[List[Tuple[int, np.ndarray, np.ndarray]], List[int]]:
     """
     Read lammpstrj file with a specified interval.
     lammpstrj file contains only "id type x y z" or "id type xs ys zs"
 
     Parameters:
-        filename : str
-        interval : int, optional
-            Interval to control how often frames are read.
-            Default is 1, meaning read every frame in dump file.
+        filename: Path to lammpstrj file
+        interval: Reading interval for frames
 
     Returns:
-        frames : list of tuples
-            Each tuple contains (step, coordinate_sorted, bounds_matrix)
-            coordinate is absolute.
-        atom_type_global : list of int
-            sorted global atom type
+        Tuple containing:
+            - Single or list of frame data (timestep, coordinates, box bounds)
+            - Global atom types
     """
 
     frames = []
@@ -225,22 +238,22 @@ def read_lammpstrj_dump(filename, interval=1):
     """
 
 
-def read_lammps_dump(filename, interval=1):
+def read_lammps_dump(
+    filename: str,
+    interval: int = 1
+) -> Tuple[List[str], List[Tuple[int, List[Dict[str, float]], np.ndarray]], List[str]]:
     """
     Read lammps dump file with a specified interval.
 
     Parameters:
-        file : str
-        interval : int, optional
-            Interval to control how often frames are read.
-            Default is 1, meaning read every frame in dump file.
+        filename: Path to dump file
+        interval: Reading interval for frames
 
     Returns:
-        frames : list of tuples
-            Each tuple contains (step, data, bounds_matrix), where 'data' is a list of dictionaries
-            with keys as data fields (e.g., 'id', 'type', 'x', 'y', 'z', 'vx', 'vy', etc.).
-        atom_type_global : list of int
-            Sorted global atom type.
+        Tuple containing:
+            - Header information
+            - List of frames (timestep, atom data, box bounds)
+            - Global atom types
     """
     frames = []
     atom_type_global = None  # Initialize outside loop
@@ -337,16 +350,19 @@ def read_lammps_dump(filename, interval=1):
         return info_line, frames, atom_type_global
 
 
-def extract_dump_data(dumpinfo_list, properties):
+def extract_dump_data(
+    dumpinfo_list: List[List[Dict[str, float]]],
+    properties: List[str]
+) -> np.ndarray:
     """
-    Extract specific properties for each atom in each frame and store them as numpy arrays.
+    Extract specific properties from dump data.
 
     Parameters:
-        frames: list of lists (multiple frames of atom data)
-        properties: list of strings (keys to extract from atom dicts)
+        dumpinfo_list: List of atom data dictionaries
+        properties: List of property names to extract
 
     Returns:
-        extracted_data: list of numpy arrays (one array per frame)
+        np.ndarray: Array of extracted properties
     """
     extracted_data = []
 

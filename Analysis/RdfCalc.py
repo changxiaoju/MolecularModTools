@@ -1,65 +1,48 @@
 import copy
 import numpy as np
+from typing import List, Dict, Optional, Union, Tuple
 
 
 class RdfCalc:
     def runRdf(
         self,
-        comx,
-        comy,
-        comz,
-        Lx,
-        Ly,
-        Lz,
-        nummoltype,
-        moltype,
-        namemoltype,
-        stabel_steps,
-        binsize,
-        maxr=None,
-        output={},
-    ):
+        comx: np.ndarray,
+        comy: np.ndarray,
+        comz: np.ndarray,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        nummoltype: List[int],
+        moltype: List[int],
+        namemoltype: List[str],
+        stable_steps: int,
+        binsize: float,
+        maxr: Optional[float] = None,
+        output: Optional[Dict] = None,
+    ) -> Dict:
         """
-
         This function calculates the radial distribution function between the
         center of mass for all species in the system
 
-            Parameters:
-                -----------
+        Parameters:
+            comx, comy, comz: Center of mass coordinates
+            Lx, Ly, Lz: Box dimensions
+            nummoltype: Number of molecules of each type
+            moltype: List indicating the type of molecules
+            namemoltype: List of molecule labels
+            stabel_steps: Number of frames to use after system relaxation
+            binsize: Size of bins for RDF calculation
+            maxr: Maximum radius for RDF calculation
+            output: Optional dictionary to store results
 
-                comx, comy, comz : np.array
-                    The x, y, and z coordinates of the center of mass, respectively.
-                    shapes: (numsteps, moltype)
-
-                Lx, Ly, Lz : float
-                    The dimensions of the simulation box in the x, y, and z directions.
-
-                nummoltype :list of int
-                    The number of different molecule types in the system. e.g., [20, 40]
-
-                moltype : list of int
-                    A list indicating the type of molecules in the system, e.g., [0, 1, 0, 0].
-
-                namemoltype : list of str
-                    A list of molecule labels corresponding to the `moltype` values, e.g., ['H', 'He'].
-
-                stabel_steps : int
-                    The number of frames to be used for the RDF calculation, selected after system relaxation.
-                    `firststep = numsteps - stabel_steps` ensures only stable configurations are considered.
-
-                binsize : float
-                    The size of the bins for calculating the radial distribution function.
-
-                maxr : float, optional
-                    The maximum radius to consider for the radial distribution function.
-                    Defaults to `None`, meaning it will be calculated based on the system size.
-
-                output : dict,optional
-                    A dictionary to store the results of the radial distribution analysis.
-
+        Returns:
+            Dict: Updated output dictionary containing RDF results
         """
+        if output is None:
+            output = {}
+            
         (maxr, numbins, count, g, firststep) = self.setgparam(
-            Lx, Ly, Lz, stabel_steps, namemoltype, maxr, binsize, len(comx)
+            Lx, Ly, Lz, stable_steps, namemoltype, maxr, binsize, len(comx)
         )
         (count) = self.radialdistribution(
             g, len(comx[1]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count
@@ -68,10 +51,19 @@ class RdfCalc:
         self.append_dict(radiuslist, g, output, namemoltype)
         return output
 
-    def setgparam(self, Lx, Ly, Lz, stabel_steps, namemoltype, maxr, binsize, numsteps):
-        # uses side lengths to set the maximum radius for box and number of bins
-        # also sets the first line using data on firststep and number of atoms
-        firststep = numsteps - stabel_steps
+    def setgparam(
+        self,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        stable_steps: int,
+        namemoltype: List[str],
+        maxr: Optional[float],
+        binsize: float,
+        numsteps: int
+    ) -> Tuple[float, int, int, np.ndarray, int]:
+        # Calculate maximum radius if not specified
+        firststep = numsteps - stable_steps
         if maxr == None:
             maxr = min(Lx / 2, Ly / 2, Lz / 2)
         else:
@@ -81,13 +73,27 @@ class RdfCalc:
         g = np.zeros((len(namemoltype), len(namemoltype), numbins))
         return maxr, numbins, count, g, firststep
 
-    def radialdistribution(self, g, nummol, moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count):
+    def radialdistribution(
+        self,
+        g: np.ndarray,
+        nummol: int,
+        moltype: List[int],
+        comx: np.ndarray,
+        comy: np.ndarray,
+        comz: np.ndarray,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        binsize: float,
+        numbins: int,
+        maxr: float,
+        count: int
+    ) -> int:
         # calculates the number of molecules within each shell
         comxt = np.array(comx[count:]).transpose()
         comyt = np.array(comy[count:]).transpose()
         comzt = np.array(comz[count:]).transpose()
         indexlist = []
-        # print(comxt)
         # change indeces order to com*[molecule][timestep]
 
         for i in range(0, len(g)):
@@ -121,20 +127,37 @@ class RdfCalc:
         count = len(comx)
         return count
 
-    def radialnormalization(self, numbins, binsize, Lx, Ly, Lz, nummol, count, g, firststep):
+    def radialnormalization(
+        self,
+        numbins: int,
+        binsize: float,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        nummoltype: List[int],
+        count: int,
+        g: np.ndarray,
+        firststep: int
+    ) -> np.ndarray:
         # normalizes g to box density
         radiuslist = (np.arange(numbins) + 1) * binsize
         radiuslist = np.around(radiuslist, decimals=3)
         for i in range(0, len(g)):
             for j in range(0, len(g)):
                 # fmt: off
-                g[i][j] *= Lx * Ly * Lz / nummol[i] / nummol[j] / 4 / np.pi / ( 
+                g[i][j] *= Lx * Ly * Lz / nummoltype[i] / nummoltype[j] / 4 / np.pi / ( 
                                radiuslist) ** 2 / binsize / (
                                count - firststep)
                 # fmt: on
         return radiuslist
 
-    def append_dict(self, radiuslist, g, output, namemoltype):
+    def append_dict(
+        self,
+        radiuslist: np.ndarray,
+        g: np.ndarray,
+        output: Dict,
+        namemoltype: List[str]
+    ) -> None:
         output["RDF"] = {}
         output["RDF"]["Units"] = "unitless, angstroms"
         for i in range(0, len(namemoltype)):

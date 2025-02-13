@@ -5,76 +5,52 @@ from scipy.integrate import cumtrapz
 from OutputInfo import ReadBox, LammpsMDInfo
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
+from typing import List, Dict, Optional, Union, Tuple
 
 
 class DcoeffVacfCalc:
 
     def runDcoeffVacf(
         self,
-        fileprefix,
-        namemoltype,
-        Nmd,
-        Nskip,
-        interval,
-        use_double_exp,
-        logname="log.lammps",
-        velname="dump.vel",
-        output={},
-        popt2=None,
-        endt=None,
-        std_perc=None,
-        ver=1,
-    ):
+        fileprefix: str,
+        namemoltype: List[str],
+        Nmd: int,
+        Nskip: int,
+        interval: int,
+        use_double_exp: bool,
+        logname: str = "log.lammps",
+        velname: str = "dump.vel",
+        output: Optional[Dict] = None,
+        popt2: Optional[List[float]] = None,
+        endt: Optional[float] = None,
+        std_perc: Optional[float] = None,
+        ver: int = 1,
+    ) -> Dict:
         """
-        This function calculates average and standard deviation of the diffusion coefficient through velocity autocorrelation function and fit the result with
-        single or double-exponential function.
+        Calculate average and standard deviation of the diffusion coefficient through 
+        velocity autocorrelation function and fit the result with single or 
+        double-exponential function.
 
-            Parameters:
-                -----------
-            fileprefix : str
+        Parameters:
+            fileprefix: Path prefix for input files
+            namemoltype: List of molecule type names
+            Nmd: Number of MD simulations
+            Nskip: Initial frames to skip
+            interval: Reading interval for velocity dump data
+            use_double_exp: Whether to use double exponential fit
+            logname: Name of log file
+            velname: Name of velocity dump file
+            output: Optional dictionary to store results
+            popt2: Initial guess values for fitting
+            endt: Cut time
+            std_perc: Standard deviation percentage for cutoff
+            ver: Verbosity level
 
-            namemoltype : list of str
-                A list of molecule labels corresponding to the `moltype` values, e.g., ['H', 'He'].
-
-            Nmd : int
-                num of md
-
-            Nskip: int
-                initial frames ignored during the calculation.
-                Note that here is the number of frames skipped after reading the box,
-                the interval parameter in "reading box" should be considered.
-
-
-            interval: int
-                reading interval of velocity dump data
-
-            use_double_exp : bool
-                weather use double-exponential fit
-
-            logname : str, optional
-
-            velname : str, optional
-
-            output : dict, optional
-
-            popt2 : list of float, optional
-                initial guess value, if None, use [1e-4,1e2] for single-exponential fit,
-                [1e-3,1.5e-1,1e2,1e3] for double-exponential fit
-
-            endt ：float, optional
-                cut time
-
-            std_perc : float, optional
-                "It was found empirically that the time at which the calculated standard deviation σ(t)
-                was about 40% of the corresponding viscosity (rough average of the flat region in the running integral)
-                was a good choice for tcut."
-                https://pubs.acs.org/doi/10.1021/acs.jctc.5b00351.
-
-                if endt=None, then use std_prec, if std_prec=None, then std_prec=0.4
-
-            ver: int, optional
-                if ver>1, output the progress
+        Returns:
+            Dict: Updated output dictionary containing diffusion coefficients
         """
+        if output is None:
+            output = {}
         # read
         properties = ["vx", "vy", "vz"]
 
@@ -165,7 +141,7 @@ class DcoeffVacfCalc:
         )
         return output
 
-    def getdcoeff(self, vel, Nskip, dt, nummoltype, dump_frec, interval):
+    def getdcoeff(self, vel: np.ndarray, Nskip: int, dt: float, nummoltype: np.ndarray, dump_frec: int, interval: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
         vel = vel[:, :, Nskip:]
         Ndim = vel.shape[0]
@@ -196,18 +172,18 @@ class DcoeffVacfCalc:
 
     def append_dict(
         self,
-        Time,
-        namemoltype,
-        output,
-        vacf,
-        vacf_mean,
-        dcoeff,
-        ave_dcoeff,
-        stddev_dcoeff,
-        Value,
-        fitcurve,
-        fitcut,
-    ):
+        Time: np.ndarray,
+        namemoltype: List[str],
+        output: Dict,
+        vacf: np.ndarray,
+        vacf_mean: np.ndarray,
+        dcoeff: np.ndarray,
+        ave_dcoeff: np.ndarray,
+        stddev_dcoeff: np.ndarray,
+        Value: np.ndarray,
+        fitcurve: np.ndarray,
+        fitcut: np.ndarray,
+    ) -> Dict:
         if "DcoeffVacf" not in output:
             output["DcoeffVacf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         output["DcoeffVacf"]["Units"] = "m^2/s"

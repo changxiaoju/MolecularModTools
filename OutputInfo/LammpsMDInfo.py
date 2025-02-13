@@ -2,12 +2,24 @@ import pandas as pd
 import numpy as np
 import re, sys
 from io import StringIO
+from typing import Tuple, Optional, List, Dict
 
 
-def basic_info(log_file):
+def basic_info(log_file: str) -> Tuple[int, float, int, int]:
+    """
+    Extract basic simulation information from LAMMPS log file.
 
-    # numlines = int(sum(1 for line in open(log_file)))
-    numlines = 500  # usually, 500 lines is enough for input information in log file.
+    Parameters:
+        log_file: Path to LAMMPS log file
+
+    Returns:
+        Tuple containing:
+            - Number of steps
+            - Timestep (dt)
+            - Dump frequency
+            - Thermo frequency
+    """
+    numlines = 500  # usually, 500 lines is enough for input information in log file
     logfile = open(log_file)
     foundrunstep, foundtrjdump, foundthermodump, foundtimestep = False, False, False, False
     i = 0
@@ -63,17 +75,15 @@ def basic_info(log_file):
     return Nsteps, dt, dump_frec, thermo_frec
 
 
-def thermo_info(log_file):
+def thermo_info(log_file: str) -> pd.DataFrame:
     """
-    Parameters
-    ----------
-    log_file: string
-        Name of lammps MD log file
+    Extract thermodynamic information from LAMMPS log file.
 
-    Returns
-    -------
-    df: DataFrame
-        The dataframe with header like "Step Temp PotEng..."
+    Parameters:
+        log_file: Path to LAMMPS log file
+
+    Returns:
+        pd.DataFrame: Dataframe containing thermodynamic data
     """
     df_list = []
 

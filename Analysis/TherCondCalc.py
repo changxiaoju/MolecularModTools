@@ -1,68 +1,52 @@
 import sys
 import numpy as np
+import pandas as pd
 from multiprocessing import Pool
 from scipy.integrate import cumtrapz
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
 from scipy.constants import k, eV
 from OutputInfo import LammpsMDInfo
+from typing import List, Dict, Optional, Union, Tuple
 
 
 class TherCondCalc:
 
     def runTherCond(
         self,
-        fileprefix,
-        Nmd,
-        Nskip,
-        use_double_exp,
-        logname="log.lammps",
-        output={},
-        popt2=None,
-        endt=None,
-        std_perc=None,
-        ver=1,
-    ):
+        fileprefix: str,
+        Nmd: int,
+        Nskip: int,
+        use_double_exp: bool,
+        logname: str = "log.lammps",
+        output: Optional[Dict] = None,
+        popt2: Optional[List[float]] = None,
+        endt: Optional[float] = None,
+        std_perc: Optional[float] = None,
+        ver: int = 1,
+    ) -> Dict:
         """
-        This function calculates average and standard deviation of the thermal conductivity and fit the result with
-        single or double-exponential function.
+        Calculate average and standard deviation of the thermal conductivity and fit 
+        the result with single or double-exponential function.
 
-            Parameters:
-                -----------
-            thermo_df : DataFrame
-                thermo dataframe read from log file, to compute thermal conductivity, it should contain heat flux named as c_J[1], c_J[2], c_J[3]
+        Parameters:
+            fileprefix: Path prefix for input files
+            Nmd: Number of MD simulations
+            Nskip: Initial frames to skip
+            use_double_exp: Whether to use double exponential fit
+            logname: Name of log file
+            output: Optional dictionary to store results
+            popt2: Initial guess values for fitting
+            endt: Cut time
+            std_perc: Standard deviation percentage for cutoff
+            ver: Verbosity level
 
-            fileprefix : str
-
-            Nmd : int
-                num of md
-
-            Nskip: int
-                initial lines ignored during the calculation
-
-            use_double_exp : bool
-                weather use double-exponential fit
-
-            logname : str, optional
-
-            output : dict, optional
-
-            popt2 : list of float, optional
-                initial guess value, if None, use [1e-4,1e2] for single-exponential fit, [1e-3,1.5e-1,1e2,1e3] for double-exponential fit
-
-            endt ：float, optional
-                cut time
-
-            std_perc : float, optional
-                "It was found empirically that the time at which the calculated standard deviation σ(t) was about 40% of the corresponding viscosity (rough average of the flat region in the running integral) was a good choice for tcut."
-                https://pubs.acs.org/doi/10.1021/acs.jctc.5b00351.
-
-                if endt=None, then use std_prec, if std_prec=None, then std_prec=0.4
-
-            ver: int, optional
-                if ver>1, output the progress
+        Returns:
+            Dict: Updated output dictionary containing thermal conductivity results
         """
-        # read
+        if output is None:
+            output = {}
+            
         output["Thermal Conductivity"] = {}
         output["Thermal Conductivity"]["Units"] = "W/(mK)"
         if fileprefix == None:
@@ -121,7 +105,12 @@ class TherCondCalc:
 
         return output
 
-    def getthercond(self, thermo_df, Nskip, dt):
+    def getthercond(
+        self,
+        thermo_df: pd.DataFrame,
+        Nskip: int,
+        dt: float
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         numtimesteps = len(thermo_df["Pxy"])
         a1 = thermo_df["c_J[1]"][Nskip:]
         a2 = thermo_df["c_J[2]"][Nskip:]

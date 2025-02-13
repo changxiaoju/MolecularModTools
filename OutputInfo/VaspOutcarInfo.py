@@ -1,24 +1,25 @@
 import os, re
 import numpy as np
+from typing import Dict, List, Tuple, Optional, Any
 
 
 class VaspOutcarInfo:
-    def __init__(self, path, NPT=False):
+    def __init__(self, path: str, NPT: bool = False) -> None:
         """
         Initializes the OutcarAnalyzer with the specified path and NPT flag.
         """
         self.path = path
         self.NPT = NPT
-        self.time_step = None
-        self.sigma = None
-        self.element_mass = {}
-        self.element_count = {}
-        self.volume = None
-        self.volumes = []
-        self.density = None
-        self.densities = []
+        self.time_step: Optional[float] = None
+        self.sigma: Optional[float] = None
+        self.element_mass: Dict[str, float] = {}
+        self.element_count: Dict[str, int] = {}
+        self.volume: Optional[float] = None
+        self.volumes: List[float] = []
+        self.density: Optional[float] = None
+        self.densities: List[float] = []
 
-    def basic_info(self):
+    def basic_info(self) -> Optional[Tuple[float, float, Dict[str, float], Dict[str, int], float, float]]:
         """
         Reads basic information such as time step, element masses, sigma, and volume from the OUTCAR file.
         If NPT is False, it also calculates density based on a single volume.
@@ -79,7 +80,7 @@ class VaspOutcarInfo:
             else:
                 return self.time_step, self.sigma, self.element_mass, self.element_count
 
-    def thermo_info(self):
+    def thermo_info(self) -> Optional[Tuple[List[float], List[float], List[float], List[np.ndarray], List[np.ndarray]]]:
         """
         Reads thermodynamic information such as temperature, volume, energy, pressure,
         and optionally atomic positions and forces from the OUTCAR file.
@@ -135,7 +136,7 @@ class VaspOutcarInfo:
         else:
             return temperature, pressure, energy, positions, forces
 
-    def calculate_density(self, volume):
+    def calculate_density(self, volume: float) -> float:
         """
         Calculate the density of the system in g/cm³.
         """

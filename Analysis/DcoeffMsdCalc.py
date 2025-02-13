@@ -1,15 +1,33 @@
 import numpy as np
 from scipy import stats
 import warnings
+from typing import List, Dict, Union, Optional
 
 
 class DcoeffMsdCalc:
 
-    def runDcoeffMsd(self, namemoltype, dt, tol, output={}):
+    def runDcoeffMsd(
+        self, 
+        namemoltype: List[str], 
+        dt: float, 
+        tol: float, 
+        output: Optional[Dict] = None
+    ) -> Dict:
         """
         This function fits the mean square displacement to calculate the
         diffusivity for all molecule types in the system
+
+        Parameters:
+            namemoltype: List of molecule type names
+            dt: Time step
+            tol: Tolerance for linear fitting
+            output: Optional dictionary to store results
+
+        Returns:
+            Dict: Updated output dictionary containing diffusion coefficients
         """
+        if output is None:
+            output = {}
 
         output["Diffusivity"] = {}
         output["Diffusivity"]["units"] = "m^2/s"
@@ -21,8 +39,16 @@ class DcoeffMsdCalc:
             firststep = self.findlinearregion(lnMSD, lntime, dt, tol)
             diffusivity = self.getdiffusivity(time, MSD, firststep)
             output["Diffusivity"][namemoltype[i]] = diffusivity
+        
+        return output
 
-    def findlinearregion(self, lnMSD, lntime, dt, tol):
+    def findlinearregion(
+        self, 
+        lnMSD: np.ndarray, 
+        lntime: np.ndarray, 
+        dt: float, 
+        tol: float
+    ) -> int:
         # Uses the slope of the log-log plot to find linear regoin of MSD
         timestepskip = np.ceil(1 / dt)
         linearregion = True
@@ -44,7 +70,12 @@ class DcoeffMsdCalc:
                     return firststep
                     linearregion = False
 
-    def getdiffusivity(self, Time, MSD, firststep):
+    def getdiffusivity(
+        self, 
+        Time: np.ndarray, 
+        MSD: np.ndarray, 
+        firststep: int
+    ) -> Union[float, str]:
         # Fits the linear region of the MSD to obtain the diffusivity
         calctime = []
         calcMSD = []

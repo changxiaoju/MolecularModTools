@@ -1,28 +1,31 @@
 import numpy as np
+from typing import List, Dict, Union, Optional, Tuple, Any
+
 class write_box:
     """
-    # Output absolute coordinates file only
+    Write atomic coordinates to various file formats. Absolute coordinates only.
 
     Parameters:
-        output_filename: str
-            The name of the output file.
-        atoms_types: list of strs
-            E.g.,['H','He'].
-        num_atoms: list of numbers
-            E.g.,[20,30] for 20 H atoms ans 30 He atoms.
-        lattice_constant: np.adrray, optional
-            For single frame.
-            A one-dimensional array of floats with shape (3,).
-        coordinates: np.ndarray, optional
-            For single frame.
-            A two-dimensional array of floats with shape (number of atoms, 3).
-        ele_name_idx: dict, optional
-            For lammps file.
-            {'element A': 1, 'element B': 2,...}
+        filename: Output file path
+        atoms_types: List of atom type labels (e.g. ['H','He'])
+        num_atoms: Number of atoms for each type (e.g. [20,30])
+        lattice_constant: Box dimensions array (3,), optional
+        coordinates: Atomic coordinates array (N_atoms,3), optional
+        ele_name_idx: Element type mapping {'element A': 1, ...}, optional
+
     Returns:
+        None
     """
 
-    def __init__(self, filename, atoms_types, num_atoms, lattice_constant=None, coordinates=None, ele_name_idx=None):
+    def __init__(
+        self, 
+        filename: str,
+        atoms_types: List[str],
+        num_atoms: List[int],
+        lattice_constant: Optional[np.ndarray] = None,
+        coordinates: Optional[np.ndarray] = None,
+        ele_name_idx: Optional[Dict[str, int]] = None
+    ) -> None:
         self.filename = filename
         self.atoms_types = atoms_types
         self.num_atoms = num_atoms
@@ -30,7 +33,7 @@ class write_box:
         self.coordinates = coordinates
         self.ele_name_idx = ele_name_idx
 
-    def write_lammps_data_file(self):
+    def write_lammps_data_file(self) -> None:
         """
         Write a LAMMPS data file, single frame.
         """
@@ -60,7 +63,7 @@ class write_box:
         with open(self.filename, "w") as f:
             f.write(ret)
 
-    def write_vasp_poscar_file(self):
+    def write_vasp_poscar_file(self) -> None:
         """
         Write a VASP POSCAR file, single frame.
         """
@@ -85,18 +88,22 @@ class write_box:
         with open(self.filename, "w") as f:
             f.write(ret)
 
-    def write_lammps_trj_file(self, frames, property_names=None):
+    def write_lammps_trj_file(
+        self, 
+        frames: List[Tuple[np.ndarray, np.ndarray]], 
+        property_names: Optional[List[str]] = None
+    ) -> None:
         """
         Write a LAMMPS trajectory file with multiple frames.
 
         Parameters:
-            frames: list of tuples
-                every tuple contains two numpy arrays.
-                - np.ndarray: A two-dimensional array of floats with shape (sum(num_atoms), num of dump values), coordinates and other properties.
-                - np.ndarray: A one-dimensional array of floats with shape (3,), cell_length.
-            property_names: list or None
-                List of strings representing the names of the properties to be dumped along with x, y, z.
-                If None, defaults to ['x', 'y', 'z'].
+            frames: List of frame data tuples, each containing:
+                - Coordinates and properties array (N_atoms, N_properties)
+                - Cell lengths array (3,)
+            property_names: Names of properties to dump with coordinates
+
+        Returns:
+            None
         """
         if property_names is None:
             property_names = ['x', 'y', 'z']
@@ -137,15 +144,20 @@ class write_box:
             f.write(ret)
         
 
-    def write_xyz_file(self, frames):
+    def write_xyz_file(
+        self, 
+        frames: List[Tuple[np.ndarray, np.ndarray]]
+    ) -> None:
         """
         Write a xyz trajectory file with multiple frames.
 
         Parameters:
-            frames: list of tuples
-                every tuple contains two numpy arrays.
-                - np.ndarray: A two-dimensional array of floats with shape (sum(num_atoms), 3), coordinates.
-                - np.ndarray: A one-dimensional array of floats with shape (3,), cell_length.
+            frames: List of frame data tuples, each containing:
+                - Coordinates array (N_atoms,3)
+                - Cell lengths array (3,)
+
+        Returns:
+            None
         """
 
         ret = ""

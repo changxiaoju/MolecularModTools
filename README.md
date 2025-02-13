@@ -23,3 +23,4 @@ for num in filelist:
     os.system('cp prepare/frozen_model.pb case.{0}/'.format(str(num).zfill(3)))
     os.system('cp prepare/job.json case.{0}/'.format(str(num).zfill(3)))
 ```
+3. example.ipynb will be uploaded later.

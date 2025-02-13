@@ -4,54 +4,48 @@ import time
 import copy
 import warnings
 import sys
+from typing import List, Dict, Optional, Union, Tuple, Any
 
 
 class MsdCalc:
 
     def runMsd(
         self,
-        comx,
-        comy,
-        comz,
-        Lx,
-        Ly,
-        Lz,
-        moltype,
-        namemoltype,
-        dt,
-        skip,
-        num_init=None,
-        ver=True,
-        output={},
-    ):
+        comx: np.ndarray,
+        comy: np.ndarray,
+        comz: np.ndarray,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        moltype: List[int],
+        namemoltype: List[str],
+        dt: float,
+        skip: int,
+        num_init: Optional[int] = None,
+        ver: bool = True,
+        output: Optional[Dict] = None,
+    ) -> Dict:
         """
         This function calculates the mean square displacement for all molecule
         types in the system from center of mass positions
 
-         Parameters:
-            -----------
-            moltype : list of int
-                A list indicating the type of molecules in the system, e.g., [0, 1, 0, 0].
+        Parameters:
+            comx, comy, comz: Center of mass coordinates
+            Lx, Ly, Lz: Box dimensions
+            moltype: List indicating the type of molecules
+            namemoltype: List of molecule labels
+            dt: Timestep
+            skip: Initial frames to skip
+            num_init: Number of initial timesteps for MSD calculation
+            ver: Whether to print progress
+            output: Optional dictionary to store results
 
-            namemoltype : list of str
-                A list of molecule labels corresponding to the `moltype` values, e.g., ['H', 'He'].
-
-            dt : float
-                The timestep of the trajectory file in units of time.
-
-            skip : int
-                The number of initial frames to skip during analysis.
-
-            num_init : int, optional
-                The number of initial timesteps for MSD calculation.
-                By default, it is half of the trajectory after removing the skipped frames.
-
-            ver : bool, optional
-                A flag to indicate whether to print progress during computation.
-
-            output : dict, optional
-                A dictionary to store the results, e.g., output = {}.
+        Returns:
+            Dict: Updated output dictionary containing MSD results
         """
+        if output is None:
+            output = {}
+
         Lx2, Ly2, Lz2 = Lx / 2, Ly / 2, Lz / 2
         (comx, comy, comz) = self.unwrap(comx, comy, comz, Lx, Ly, Lz, Lx2, Ly2, Lz2)
         if ver > 0:
@@ -72,7 +66,18 @@ class MsdCalc:
         self.append_dict(MSD, namemoltype, output, Time)
         return output
 
-    def unwrap(self, comx, comy, comz, Lx, Ly, Lz, Lx2, Ly2, Lz2):
+    def unwrap(
+        self,
+        comx: np.ndarray,
+        comy: np.ndarray,
+        comz: np.ndarray,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        Lx2: float,
+        Ly2: float,
+        Lz2: float,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # unwraps the coordintes of the molecules
         # assumes if a molecule is more than half a box length away from its
         # previous coordinte that it passed through a periodic boundary
@@ -100,7 +105,13 @@ class MsdCalc:
                         comz[i][j] += Lz
         return (comx, comy, comz)
 
-    def gettimesteps(self, num_timesteps, namemoltype, skip, num_init=None):
+    def gettimesteps(
+        self,
+        num_timesteps: int,
+        namemoltype: List[str],
+        skip: int,
+        num_init: Optional[int] = None
+    ) -> Tuple[int, int, np.ndarray, List]:
         # Calculates the length of the trajectory
         # Uses length to determine length of MSD and number of initial timesteps
         if num_init == None:
@@ -113,7 +124,11 @@ class MsdCalc:
         diffusivity = []
         return (num_init, len_MSD, MSD, diffusivity)
 
-    def setmolarray(self, moltype, namemoltype):
+    def setmolarray(
+        self,
+        moltype: List[int],
+        namemoltype: List[str]
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # Generates arrays for dot product calculation
         # Array is MxN where M is number of molecule types and N is number of molecules
         # value is 1 if molecule N is of type M else is 0
@@ -135,32 +150,61 @@ class MsdCalc:
                [0., 1., 0., 0.]])
         """
 
-    def calcr2(self, comx, comy, comz, i, j):
+    def calcr2(
+        self,
+        comx: np.ndarray,
+        comy: np.ndarray,
+        comz: np.ndarray,
+        i: int,
+        j: int
+    ) -> np.ndarray:
         # Calculates distance molecule has traveled between steps i and j
         r2 = (comx[j] - comx[i]) ** 2 + (comy[j] - comy[i]) ** 2 + (comz[j] - comz[i]) ** 2
         return r2
 
-    def MSDadd(self, r2, MSD, molcheck, i, j):
+    def MSDadd(
+        self,
+        r2: np.ndarray,
+        MSD: np.ndarray,
+        molcheck: np.ndarray,
+        i: int,
+        j: int
+    ) -> np.ndarray:
         # Uses dot product to calculate average MSD for a molecule type
         for k in range(0, len(molcheck)):
             sr2 = np.dot(r2, molcheck[k])
             MSD[k][j - i] += sr2
         return MSD
 
-    def MSDnorm(self, MSD, MSDt, nummol):
+    def MSDnorm(
+        self,
+        MSD: np.ndarray,
+        MSDt: int,
+        nummol: np.ndarray
+    ) -> np.ndarray:
         # Normalize the MSD by number of molecules and number of initial timesteps
         for i in range(0, len(nummol)):
             MSD[i] /= MSDt * nummol[i]
 
         return MSD
 
-    def createtime(self, dt, MSDt):
+    def createtime(
+        self,
+        dt: float,
+        MSDt: int
+    ) -> np.ndarray:
         # Creates an array of time values
         Time = np.arange(0, MSDt, dtype=float)
         Time *= dt
         return Time
 
-    def append_dict(self, MSD, namemoltype, output, Time):
+    def append_dict(
+        self,
+        MSD: np.ndarray,
+        namemoltype: List[str],
+        output: Dict,
+        Time: np.ndarray
+    ) -> None:
         # Write MSD to output dictionary
         output["MSD"] = {}
         output["MSD"]["Units"] = "Angstroms^2, ps"
