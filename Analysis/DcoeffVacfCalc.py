@@ -54,9 +54,6 @@ class DcoeffVacfCalc:
         # read
         properties = ["vx", "vy", "vz"]
 
-        if fileprefix == None:
-            fileprefix = "./"
-
         logfilename = fileprefix + "000/" + logname
         Nsteps, dt, dump_frec, thermo_frec = LammpsMDInfo.basic_info(logfilename)
 
@@ -184,20 +181,20 @@ class DcoeffVacfCalc:
         fitcurve: np.ndarray,
         fitcut: np.ndarray,
     ) -> Dict:
-        if "DcoeffVacf" not in output:
-            output["DcoeffVacf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-        output["DcoeffVacf"]["Units"] = "m^2/s"
-        output["DcoeffVacf"]["Time"] = Time
+        if "D_s_VACF" not in output:
+            output["D_s_VACF"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+        output["D_s_VACF"]["Units"] = "m^2/s"
+        output["D_s_VACF"]["Time"] = Time
         dim = ["x", "y", "z", "total"]
         for i in range(ave_dcoeff.shape[0]):
             for j in range(ave_dcoeff.shape[1]):
-                output["DcoeffVacf"]["VACF"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf[i, j])
-                output["DcoeffVacf"]["VACF Average"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf_mean[i, j])
-                output["DcoeffVacf"]["Integrals"][namemoltype[i]][dim[j]] = copy.deepcopy(dcoeff[i, j])
-                output["DcoeffVacf"]["Average Value"][namemoltype[i]][dim[j]] = copy.deepcopy(Value[i, j])
-                output["DcoeffVacf"]["Average Integral"][namemoltype[i]][dim[j]] = copy.deepcopy(ave_dcoeff[i, j])
-                output["DcoeffVacf"]["Standard Deviation"][namemoltype[i]][dim[j]] = copy.deepcopy(stddev_dcoeff[i, j])
-                output["DcoeffVacf"]["Fit"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcurve[i, j])
-                output["DcoeffVacf"]["Fit Cut"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcut[i, j])
+                output["D_s_VACF"]["VACF"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf[i, j])
+                output["D_s_VACF"]["VACF Average"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf_mean[i, j])
+                output["D_s_VACF"]["Integrals"][namemoltype[i]][dim[j]] = copy.deepcopy(dcoeff[i, j])
+                output["D_s_VACF"]["Average Value"][namemoltype[i]][dim[j]] = copy.deepcopy(Value[i, j])
+                output["D_s_VACF"]["Average Integral"][namemoltype[i]][dim[j]] = copy.deepcopy(ave_dcoeff[i, j])
+                output["D_s_VACF"]["Standard Deviation"][namemoltype[i]][dim[j]] = copy.deepcopy(stddev_dcoeff[i, j])
+                output["D_s_VACF"]["Fit"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcurve[i, j])
+                output["D_s_VACF"]["Fit Cut"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcut[i, j])
 
         return output

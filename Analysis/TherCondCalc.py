@@ -47,10 +47,8 @@ class TherCondCalc:
         if output is None:
             output = {}
             
-        output["Thermal Conductivity"] = {}
-        output["Thermal Conductivity"]["Units"] = "W/(mK)"
-        if fileprefix == None:
-            fileprefix = "./"
+        output["k"] = {}
+        output["k"]["Units"] = "W/(mK)"
 
         logfilename = fileprefix + "000/" + logname
         thermo_df = LammpsMDInfo.thermo_info(logfilename)
@@ -78,10 +76,10 @@ class TherCondCalc:
         if ver >= 1:
             sys.stdout.write("\n")
 
-        output["Thermal Conductivity"]["Time"] = Time[:trjlen]
+        output["k"]["Time"] = Time[:trjlen]
         hcacf_mean = np.mean(hcacf, axis=0)
-        output["Thermal Conductivity"]["HCACF"] = hcacf
-        output["Thermal Conductivity"]["HCACF Average"] = hcacf_mean
+        output["k"]["HCACF"] = hcacf
+        output["k"]["HCACF Average"] = hcacf_mean
 
         # fit
         fitthercond = fit()
@@ -96,12 +94,12 @@ class TherCondCalc:
             Time, ave_thercond, stddev_thercond, use_double_exp, popt2, std_perc, endt
         )
 
-        output["Thermal Conductivity"]["Integrals"] = thercond
-        output["Thermal Conductivity"]["Average Value"] = Value
-        output["Thermal Conductivity"]["Average Integral"] = ave_thercond
-        output["Thermal Conductivity"]["Standard Deviation"] = stddev_thercond
-        output["Thermal Conductivity"]["Fit"] = fitcurve
-        output["Thermal Conductivity"]["Fit Cut"] = fitcut
+        output["k"]["Integrals"] = thercond
+        output["k"]["Average Value"] = Value
+        output["k"]["Average Integral"] = ave_thercond
+        output["k"]["Standard Deviation"] = stddev_thercond
+        output["k"]["Fit"] = fitcurve
+        output["k"]["Fit Cut"] = fitcut
 
         return output
 

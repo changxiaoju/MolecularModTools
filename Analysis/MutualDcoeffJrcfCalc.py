@@ -13,7 +13,6 @@ class MutualDcoeffJrcfCalc:
     def runMutualDcoeffjrcf(
         self,
         fileprefix: str,
-        namemoltype: List[str],
         molmass: List[int],
         Nmd: int,
         Nskip: int,
@@ -34,7 +33,6 @@ class MutualDcoeffJrcfCalc:
 
         Parameters:
             fileprefix: Path prefix for input files
-            namemoltype: List of molecule type names
             molmass: List of molecular masses
             Nmd: Number of MD simulations
             Nskip: Initial frames to skip
@@ -56,9 +54,6 @@ class MutualDcoeffJrcfCalc:
             
         # read
         properties = ["vx", "vy", "vz"]
-
-        if fileprefix == None:
-            fileprefix = "./"
 
         logfilename = fileprefix + "000/" + logname
         Nsteps, dt, dump_frec, thermo_frec = LammpsMDInfo.basic_info(logfilename)
@@ -224,20 +219,20 @@ class MutualDcoeffJrcfCalc:
         fitcurve: np.ndarray,
         fitcut: np.ndarray,
     ) -> Dict:
-        if "MutualDcoeffJrcf" not in output:
-            output["MutualDcoeffJrcf"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-        output["MutualDcoeffJrcf"]["Units"] = "m^2/s"
-        output["MutualDcoeffJrcf"]["Time"] = Time
+        if "D_m" not in output:
+            output["D_m"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+        output["D_m"]["Units"] = "m^2/s"
+        output["D_m"]["Time"] = Time
         dim = ["x", "y", "z", "total"]
         for i in range(ave_mutual_dcoeff.shape[0]):
             for j in range(ave_mutual_dcoeff.shape[1]):
-                output["MutualDcoeffJrcf"]["JrCF"][i][dim[j]] = copy.deepcopy(jrcf[i, j])
-                output["MutualDcoeffJrcf"]["JrCF Average"][i][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
-                output["MutualDcoeffJrcf"]["Integrals"][i][dim[j]] = copy.deepcopy(mutual_dcoeff[i, j])
-                output["MutualDcoeffJrcf"]["Average Value"][i][dim[j]] = copy.deepcopy(Value[i, j])
-                output["MutualDcoeffJrcf"]["Average Integral"][i][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
-                output["MutualDcoeffJrcf"]["Standard Deviation"][i][dim[j]] = copy.deepcopy(stddev_mutual_dcoeff[i, j])
-                output["MutualDcoeffJrcf"]["Fit"][i][dim[j]] = copy.deepcopy(fitcurve[i, j])
-                output["MutualDcoeffJrcf"]["Fit Cut"][i][dim[j]] = copy.deepcopy(fitcut[i, j])
+                output["D_m"]["JrCF"][i][dim[j]] = copy.deepcopy(jrcf[i, j])
+                output["D_m"]["JrCF Average"][i][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
+                output["D_m"]["Integrals"][i][dim[j]] = copy.deepcopy(mutual_dcoeff[i, j])
+                output["D_m"]["Average Value"][i][dim[j]] = copy.deepcopy(Value[i, j])
+                output["D_m"]["Average Integral"][i][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
+                output["D_m"]["Standard Deviation"][i][dim[j]] = copy.deepcopy(stddev_mutual_dcoeff[i, j])
+                output["D_m"]["Fit"][i][dim[j]] = copy.deepcopy(fitcurve[i, j])
+                output["D_m"]["Fit Cut"][i][dim[j]] = copy.deepcopy(fitcut[i, j])
 
         return output

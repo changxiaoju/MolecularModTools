@@ -55,7 +55,6 @@ class SsfCalc:
         Lx: float,
         Ly: float,
         Lz: float,
-        nummoltype: List[int],
         moltype: List[int],
         namemoltype: List[str],
         stable_steps: int,
@@ -71,7 +70,6 @@ class SsfCalc:
         ----------
         comx, comy, comz : Center of mass coordinates
         Lx, Ly, Lz : Box dimensions
-        nummoltype : Number of molecules of each type
         moltype : List indicating the type of molecules
         namemoltype : List of molecule labels
         stable_steps : Number of frames to use after system relaxation
@@ -88,13 +86,13 @@ class SsfCalc:
         # Initialize output dictionary
         if output is None:
             output = {}
-        if 'SSF' not in output:
-            output['SSF'] = {}
+        if 'S(k)_atomic' not in output:
+            output['S(k)_atomic'] = {}
 
         # Initialize k points
         k_min = 2 * np.pi / (max(Lx, Ly, Lz)*6)
         k_points = np.linspace(k_min, k_max, k_bins)
-        output['SSF']['k'] = k_points
+        output['S(k)_atomic']['k'] = k_points
 
         # Pre-generate k directions
         k_directions = self._generate_k_directions(n_k_directions).astype(np.float32)
@@ -142,7 +140,7 @@ class SsfCalc:
                 sk_avg = sk_sum / n_frames
                 
                 pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
-                output['SSF'][pair_key] = sk_avg
+                output['S(k)_atomic'][pair_key] = sk_avg
 
         return output
     
@@ -196,10 +194,10 @@ class SsfCalc:
         """
         if output is None:
             output = {}
-        if 'SSF' not in output:
-            output['SSF'] = {}
+        if 'S(k)_rdf_ft' not in output:
+            output['S(k)_rdf_ft'] = {}
         
-        output['SSF']['k'] = k_points
+        output['S(k)_rdf_ft']['k'] = k_points
         
         # Pre-calculate broadcast shapes for efficiency
         k = k_points.reshape(-1, 1)
@@ -227,7 +225,7 @@ class SsfCalc:
                 # Handle k = 0 case
                 s_k = np.where(k.squeeze() != 0, s_k, delta)
 
-            output['SSF'][pair_key] = s_k
+            output['S(k)_rdf_ft'][pair_key] = s_k
 
         return output
 

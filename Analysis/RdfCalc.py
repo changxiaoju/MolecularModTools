@@ -12,7 +12,6 @@ class RdfCalc:
         Lx: float,
         Ly: float,
         Lz: float,
-        nummoltype: List[int],
         moltype: List[int],
         namemoltype: List[str],
         stable_steps: int,
@@ -27,7 +26,6 @@ class RdfCalc:
         Parameters:
             comx, comy, comz: Center of mass coordinates
             Lx, Ly, Lz: Box dimensions
-            nummoltype: Number of molecules of each type
             moltype: List indicating the type of molecules
             namemoltype: List of molecule labels
             stabel_steps: Number of frames to use after system relaxation
@@ -47,6 +45,8 @@ class RdfCalc:
         (count) = self.radialdistribution(
             g, len(comx[1]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count
         )
+        nummoltype = np.unique(moltype, return_counts=True)[1]
+
         (radiuslist) = self.radialnormalization(numbins, binsize, Lx, Ly, Lz, nummoltype, count, g, firststep)
         self.append_dict(radiuslist, g, output, namemoltype)
         return output
@@ -158,11 +158,11 @@ class RdfCalc:
         output: Dict,
         namemoltype: List[str]
     ) -> None:
-        output["RDF"] = {}
-        output["RDF"]["Units"] = "unitless, angstroms"
+        output["g(r)"] = {}
+        output["g(r)"]["Units"] = "unitless, angstroms"
         for i in range(0, len(namemoltype)):
             for j in range(i, len(namemoltype)):
                 if not all([v == 0 for v in g[i][j]]):
-                    output["RDF"]["{0}-{1}".format(namemoltype[i], namemoltype[j])] = copy.deepcopy(g[i][j].tolist())
-        if "distance" not in list(output["RDF"].keys()):
-            output["RDF"]["Distance"] = copy.deepcopy(radiuslist.tolist())
+                    output["g(r)"]["{0}-{1}".format(namemoltype[i], namemoltype[j])] = copy.deepcopy(g[i][j].tolist())
+        if "distance" not in list(output["g(r)"].keys()):
+            output["g(r)"]["Distance"] = copy.deepcopy(radiuslist.tolist())

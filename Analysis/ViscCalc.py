@@ -47,10 +47,8 @@ class ViscCalc:
         if output is None:
             output = {}
             
-        output["Viscosity"] = {}
-        output["Viscosity"]["Units"] = "mPa·s"
-        if fileprefix == None:
-            fileprefix = "./"
+        output["μ"] = {}
+        output["μ"]["Units"] = "mPa·s"
 
         logfilename = fileprefix + "000/" + logname
         thermo_df = LammpsMDInfo.thermo_info(logfilename)
@@ -78,10 +76,10 @@ class ViscCalc:
         if ver >= 1:
             sys.stdout.write("\n")
 
-        output["Viscosity"]["Time"] = Time[:trjlen]
+        output["μ"]["Time"] = Time[:trjlen]
         sacf_mean = np.mean(sacf, axis=0)
-        output["Viscosity"]["SACF"] = sacf
-        output["Viscosity"]["SACF Average"] = sacf_mean
+        output["μ"]["SACF"] = sacf
+        output["μ"]["SACF Average"] = sacf_mean
 
         # fit
         fitvisc = fit()
@@ -94,12 +92,12 @@ class ViscCalc:
                 popt2 = [1e-4, 1e2]
         Value, fitcurve, fitcut = fitvisc.fit(Time, ave_visc, stddev_visc, use_double_exp, popt2, std_perc, endt)
 
-        output["Viscosity"]["Integrals"] = viscosity
-        output["Viscosity"]["Average Value"] = Value
-        output["Viscosity"]["Average Integral"] = ave_visc
-        output["Viscosity"]["Standard Deviation"] = stddev_visc
-        output["Viscosity"]["Fit"] = fitcurve
-        output["Viscosity"]["Fit Cut"] = fitcut
+        output["μ"]["Integrals"] = viscosity
+        output["μ"]["Average Value"] = Value
+        output["μ"]["Average Integral"] = ave_visc
+        output["μ"]["Standard Deviation"] = stddev_visc
+        output["μ"]["Fit"] = fitcurve
+        output["μ"]["Fit Cut"] = fitcut
 
         return output
 
