@@ -1,9 +1,6 @@
 import numpy as np
-import os
-import time
 import copy
-import warnings
-import sys
+from tqdm import tqdm
 from typing import List, Dict, Optional, Union, Tuple, Any
 
 
@@ -22,8 +19,8 @@ class MsdCalc:
         dt: float,
         skip: int,
         num_init: Optional[int] = None,
-        ver: bool = True,
         output: Optional[Dict] = None,
+        ver: bool = True,
     ) -> Dict:
         """
         This function calculates the mean square displacement for all molecule
@@ -37,8 +34,9 @@ class MsdCalc:
             dt: Timestep
             skip: Initial frames to skip
             num_init: Number of initial timesteps for MSD calculation
-            ver: Whether to print progress
             output: Optional dictionary to store results
+            ver: Whether to print progress
+
 
         Returns:
             Dict: Updated output dictionary containing MSD results
@@ -48,19 +46,16 @@ class MsdCalc:
 
         Lx2, Ly2, Lz2 = Lx / 2, Ly / 2, Lz / 2
         (comx, comy, comz) = self.unwrap(comx, comy, comz, Lx, Ly, Lz, Lx2, Ly2, Lz2)
-        if ver > 0:
-            print("unwrap complete")
         num_timesteps = len(comx)
         (num_init, len_MSD, MSD, diffusivity) = self.gettimesteps(num_timesteps, namemoltype, skip, num_init)
         (molcheck, nummol) = self.setmolarray(moltype, namemoltype)
-        for i in range(skip, num_init + skip):
-            for j in range(i, i + len_MSD):
-                r2 = self.calcr2(comx, comy, comz, i, j)
-                MSD = self.MSDadd(r2, MSD, molcheck, i, j)
-            if ver:
-                sys.stdout.write("\rMSD calculation {:.2f}% complete".format((i + 1 - skip) * 100.0 / num_init))
-        if ver:
-            sys.stdout.write("\n")
+        with tqdm(total=num_init, desc="Calculating MSD", 
+                disable=not ver) as pbar:
+            for i in range(skip, num_init + skip):
+                for j in range(i, i + len_MSD):
+                    r2 = self.calcr2(comx, comy, comz, i, j)
+                    MSD = self.MSDadd(r2, MSD, molcheck, i, j)
+                pbar.update(1)
         MSD = self.MSDnorm(MSD, num_init, nummol)
         Time = self.createtime(dt, len_MSD)
         self.append_dict(MSD, namemoltype, output, Time)

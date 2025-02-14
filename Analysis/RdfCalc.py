@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+from tqdm import tqdm
 from typing import List, Dict, Optional, Union, Tuple
 
 
@@ -18,6 +19,7 @@ class RdfCalc:
         binsize: float,
         maxr: Optional[float] = None,
         output: Optional[Dict] = None,
+        ver: bool = True,
     ) -> Dict:
         """
         This function calculates the radial distribution function between the
@@ -32,6 +34,7 @@ class RdfCalc:
             binsize: Size of bins for RDF calculation
             maxr: Maximum radius for RDF calculation
             output: Optional dictionary to store results
+            ver: Boolean to enable/disable progress bar
 
         Returns:
             Dict: Updated output dictionary containing RDF results
@@ -43,7 +46,7 @@ class RdfCalc:
             Lx, Ly, Lz, stable_steps, namemoltype, maxr, binsize, len(comx)
         )
         (count) = self.radialdistribution(
-            g, len(comx[1]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count
+            g, len(comx[1]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count, ver
         )
         nummoltype = np.unique(moltype, return_counts=True)[1]
 
@@ -87,7 +90,8 @@ class RdfCalc:
         binsize: float,
         numbins: int,
         maxr: float,
-        count: int
+        count: int,
+        ver: bool = True
     ) -> int:
         # calculates the number of molecules within each shell
         comxt = np.array(comx[count:]).transpose()
@@ -103,26 +107,28 @@ class RdfCalc:
             # second dimension is over molecules
             # contains boolean for if that molecule is of the molecule type
 
-        for molecule in range(0, nummol - 1):
-            dx = comxt[molecule + 1 :] - np.tile(comxt[molecule], (len(comxt) - molecule - 1, 1))
-            dy = comyt[molecule + 1 :] - np.tile(comyt[molecule], (len(comyt) - molecule - 1, 1))
-            dz = comzt[molecule + 1 :] - np.tile(comzt[molecule], (len(comzt) - molecule - 1, 1))
+        with tqdm(total=nummol-1, desc="Calculating RDF", disable=not ver) as pbar:
+            for molecule in range(0, nummol - 1):
+                dx = comxt[molecule + 1 :] - np.tile(comxt[molecule], (len(comxt) - molecule - 1, 1))
+                dy = comyt[molecule + 1 :] - np.tile(comyt[molecule], (len(comyt) - molecule - 1, 1))
+                dz = comzt[molecule + 1 :] - np.tile(comzt[molecule], (len(comzt) - molecule - 1, 1))
 
-            dx -= Lx * np.around(dx / Lx)
-            dy -= Ly * np.around(dy / Ly)
-            dz -= Lz * np.around(dz / Lz)
-            # minimum image convention
+                dx -= Lx * np.around(dx / Lx)
+                dy -= Ly * np.around(dy / Ly)
+                dz -= Lz * np.around(dz / Lz)
+                # minimum image convention
 
-            r2 = dx**2 + dy**2 + dz**2
-            r = np.sqrt(r2)
-            for i in range(0, len(indexlist)):
-                gt, dist = np.histogram(
-                    r[indexlist[i][molecule + 1 :]].ravel(),
-                    bins=numbins,
-                    range=(0.5 * binsize, binsize * (numbins + 0.5)),
-                )
-                g[moltype[molecule]][i] += gt
-                g[i][moltype[molecule]] += gt
+                r2 = dx**2 + dy**2 + dz**2
+                r = np.sqrt(r2)
+                for i in range(0, len(indexlist)):
+                    gt, dist = np.histogram(
+                        r[indexlist[i][molecule + 1 :]].ravel(),
+                        bins=numbins,
+                        range=(0.5 * binsize, binsize * (numbins + 0.5)),
+                    )
+                    g[moltype[molecule]][i] += gt
+                    g[i][moltype[molecule]] += gt
+                pbar.update(1)
 
         count = len(comx)
         return count
@@ -164,5 +170,5 @@ class RdfCalc:
             for j in range(i, len(namemoltype)):
                 if not all([v == 0 for v in g[i][j]]):
                     output["g(r)"]["{0}-{1}".format(namemoltype[i], namemoltype[j])] = copy.deepcopy(g[i][j].tolist())
-        if "distance" not in list(output["g(r)"].keys()):
+        if "Distance" not in list(output["g(r)"].keys()):
             output["g(r)"]["Distance"] = copy.deepcopy(radiuslist.tolist())

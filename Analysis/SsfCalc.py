@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 from typing import List, Dict, Optional, Tuple
 from numba import njit, prange
 
@@ -62,6 +63,7 @@ class SsfCalc:
         k_bins: int = 100,
         n_k_directions: int = 50,
         output: Optional[Dict] = None,
+        ver: bool = True,
     ) -> Dict:
         """
         Calculate static structure factor S(k) for all species in the system
@@ -77,6 +79,7 @@ class SsfCalc:
         k_bins : Number of k points, defaults to 100
         n_k_directions : Number of k directions for spherical averaging, defaults to 50
         output : Optional dictionary to store results, defaults to None
+        ver : Whether to show progress bar, defaults to True
 
         Returns
         -------
@@ -100,47 +103,49 @@ class SsfCalc:
         unique_types = sorted(set(moltype))
         n_types = len(unique_types)
 
-        for i in range(n_types):
-            type_i = unique_types[i]
-            for j in range(i, n_types):
-                type_j = unique_types[j]
-                
-                sk_sum = np.zeros_like(k_points)
-                
-                n_frames = 0
-                numsteps = len(comx)  
-                first_step = numsteps - stable_steps  
+        with tqdm(total=n_types*(n_types+1)//2*stable_steps, desc="Calculating S(k)", disable=not ver) as pbar:
+            for i in range(n_types):
+                type_i = unique_types[i]
+                for j in range(i, n_types):
+                    type_j = unique_types[j]
+                    
+                    sk_sum = np.zeros_like(k_points)
+                    
+                    n_frames = 0
+                    numsteps = len(comx)  
+                    first_step = numsteps - stable_steps  
 
-                if first_step < 0:
-                    print(f"Warning: stable_steps ({stable_steps}) is larger than total steps ({numsteps}). Using all steps.")
-                    first_step = 0
+                    if first_step < 0:
+                        print(f"Warning: stable_steps ({stable_steps}) is larger than total steps ({numsteps}). Using all steps.")
+                        first_step = 0
 
-                for step in range(first_step, numsteps):
-                    pos = np.column_stack((comx[step], comy[step], comz[step]))
-                    pos = self._apply_pbc(pos, Lx, Ly, Lz)
+                    for step in range(first_step, numsteps):
+                        pos = np.column_stack((comx[step], comy[step], comz[step]))
+                        pos = self._apply_pbc(pos, Lx, Ly, Lz)
+                        
+                        mask_i = np.array(moltype) == type_i
+                        mask_j = np.array(moltype) == type_j
+                        pos_i = pos[mask_i]
+                        pos_j = pos[mask_j]
+                        
+                        N_i = len(pos_i)
+                        N_j = len(pos_j)
+                        norm = np.sqrt(N_i * N_j) if i != j else N_i
+                        
+                        sk_frame = calculate_sk_numba(k_points.astype(np.float32), 
+                                                        k_directions,
+                                                        pos_i, 
+                                                        pos_j,
+                                                        np.float32(norm))
+                        
+                        sk_sum += sk_frame
+                        n_frames += 1
+                        pbar.update(1)
                     
-                    mask_i = np.array(moltype) == type_i
-                    mask_j = np.array(moltype) == type_j
-                    pos_i = pos[mask_i]
-                    pos_j = pos[mask_j]
+                    sk_avg = sk_sum / n_frames
                     
-                    N_i = len(pos_i)
-                    N_j = len(pos_j)
-                    norm = np.sqrt(N_i * N_j) if i != j else N_i
-                    
-                    sk_frame = calculate_sk_numba(k_points.astype(np.float32), 
-                                                   k_directions,
-                                                   pos_i, 
-                                                   pos_j,
-                                                   np.float32(norm))
-                    
-                    sk_sum += sk_frame
-                    n_frames += 1
-                
-                sk_avg = sk_sum / n_frames
-                
-                pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
-                output['S(k)_atomic'][pair_key] = sk_avg
+                    pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
+                    output['S(k)_atomic'][pair_key] = sk_avg
 
         return output
     
