@@ -110,8 +110,6 @@ class SsfCalc:
                     type_j = unique_types[j]
                     
                     sk_sum = np.zeros_like(k_points)
-                    
-                    n_frames = 0
                     numsteps = len(comx)  
                     first_step = numsteps - stable_steps  
 
@@ -139,10 +137,9 @@ class SsfCalc:
                                                         np.float32(norm))
                         
                         sk_sum += sk_frame
-                        n_frames += 1
                         pbar.update(1)
                     
-                    sk_avg = sk_sum / n_frames
+                    sk_avg = sk_sum / stable_steps
                     
                     pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
                     output['S(k)_atomic'][pair_key] = sk_avg
