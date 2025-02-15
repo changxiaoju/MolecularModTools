@@ -10,7 +10,7 @@ class MsdCalc:
         self,
         coordinates: np.ndarray,
         bounds_matrix: np.ndarray,
-        moltype: List[int],
+        moltype: Union[List[int], np.ndarray],
         namemoltype: List[str],
         dt: float,
         skip: int,
@@ -23,9 +23,9 @@ class MsdCalc:
         types in the system from center of mass positions
 
         Parameters:
-            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3).
-            bounds_matrix: A two-dimensional array of floats with shape (3, 3).
-            moltype: List indicating the type of molecules
+            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3)
+            bounds_matrix: A two-dimensional array of floats with shape (3, 3)
+            moltype: List or numpy array indicating the type of molecules
             namemoltype: List of molecule labels
             dt: Timestep
             skip: Initial frames to skip
@@ -120,7 +120,7 @@ class MsdCalc:
 
     def setmolarray(
         self,
-        moltype: List[int],
+        moltype: Union[List[int], np.ndarray],
         namemoltype: List[str]
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Generates arrays for dot product calculation

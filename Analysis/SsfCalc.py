@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from typing import List, Dict, Optional, Tuple
 from numba import njit, prange
+from typing import List, Dict, Optional, Union, Tuple
 
 @njit(parallel=True, fastmath=True)
 def calculate_sk_numba(k_points, k_directions, pos_i, pos_j, norm):
@@ -52,7 +53,7 @@ class SsfCalc:
         self,
         coordinates: np.ndarray,
         bounds_matrix: np.ndarray,
-        moltype: List[int],
+        moltype: Union[List[int], np.ndarray],
         namemoltype: List[str],
         stable_steps: int,
         k_max: float = 15.0,
@@ -65,9 +66,9 @@ class SsfCalc:
 
         Parameters
         ----------
-        coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3).
-        bounds_matrix: A two-dimensional array of floats with shape (3, 3).
-        moltype : List indicating the type of molecules
+        coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3)
+        bounds_matrix: A two-dimensional array of floats with shape (3, 3)
+        moltype : List or numpy array indicating the type of molecules
         namemoltype : List of molecule labels
         stable_steps : Number of frames to use after system relaxation
         k_max : Maximum k value for calculation, defaults to 15.0

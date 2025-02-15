@@ -9,12 +9,13 @@ class RdfCalc:
         self,
         coordinates: np.ndarray,
         bounds_matrix: np.ndarray,
-        moltype: List[int],
+        moltype: Union[List[int], np.ndarray],
         namemoltype: List[str],
         stable_steps: int,
         binsize: float,
         maxr: Optional[float] = None,
         output: Optional[Dict] = None,
+        replicate: int = 1,
         ver: bool = True,
     ) -> Dict:
         """
@@ -22,9 +23,9 @@ class RdfCalc:
         center of mass for all species in the system
 
         Parameters:
-            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3).
-            bounds_matrix: A two-dimensional array of floats with shape (3, 3).
-            moltype: List indicating the type of molecules
+            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3)
+            bounds_matrix: A two-dimensional array of floats with shape (3, 3)
+            moltype: List or numpy array indicating the type of molecules
             namemoltype: List of molecule labels
             stabel_steps: Number of frames to use after system relaxation
             binsize: Size of bins for RDF calculation
@@ -37,6 +38,8 @@ class RdfCalc:
         """
         if output is None:
             output = {}
+        
+        #if replicate > 1:
         
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
@@ -79,7 +82,7 @@ class RdfCalc:
         self,
         g: np.ndarray,
         nummol: int,
-        moltype: List[int],
+        moltype: Union[List[int], np.ndarray],
         comx: np.ndarray,
         comy: np.ndarray,
         comz: np.ndarray,
