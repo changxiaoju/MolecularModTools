@@ -28,6 +28,7 @@ class adjust_cell:
         Tuple[np.ndarray, np.ndarray]: 
             - new_lattice: The scaled lattice constants
             - new_coordinates: The coordinates of atoms in the supercell
+            - new_moltype: The type of molecules in the supercell
         """
         scaling_factors = np.array(scaling_factors)
         new_bounds_matrix = scaling_factors * self.bounds_matrix
