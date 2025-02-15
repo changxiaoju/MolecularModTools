@@ -1,6 +1,7 @@
 import copy
 import numpy as np
 from tqdm import tqdm
+from Analysis.AdjustCell import adjust_cell
 from typing import List, Dict, Optional, Union, Tuple
 
 
@@ -31,6 +32,7 @@ class RdfCalc:
             binsize: Size of bins for RDF calculation
             maxr: Maximum radius for RDF calculation
             output: Optional dictionary to store results
+            replicate: Number of times to replicate the system, default is 1
             ver: Boolean to enable/disable progress bar
 
         Returns:
@@ -39,7 +41,15 @@ class RdfCalc:
         if output is None:
             output = {}
         
-        #if replicate > 1:
+        if replicate > 1:
+            new_coordinates = np.zeros((len(coordinates), len(coordinates[0])*replicate*replicate*replicate, 3))
+            for i in range(len(coordinates)):
+                adj_cell = adjust_cell(coordinates[i], bounds_matrix, moltype)
+                new_bounds_matrix, i_coordinates, new_moltype = adj_cell.make_supercell([replicate, replicate, replicate])
+                new_coordinates[i] = i_coordinates
+            coordinates = np.array(new_coordinates)
+            bounds_matrix = new_bounds_matrix
+            moltype = new_moltype
         
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
