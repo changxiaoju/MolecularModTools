@@ -50,17 +50,12 @@ class SsfCalc:
     
     def runSsf(
         self,
-        comx: np.ndarray,
-        comy: np.ndarray,
-        comz: np.ndarray,
-        Lx: float,
-        Ly: float,
-        Lz: float,
+        coordinates: np.ndarray,
+        bounds_matrix: np.ndarray,
         moltype: List[int],
         namemoltype: List[str],
         stable_steps: int,
         k_max: float = 15.0,
-        k_bins: int = 100,
         n_k_directions: int = 50,
         output: Optional[Dict] = None,
         ver: bool = True,
@@ -70,13 +65,12 @@ class SsfCalc:
 
         Parameters
         ----------
-        comx, comy, comz : Center of mass coordinates
-        Lx, Ly, Lz : Box dimensions
+        coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3).
+        bounds_matrix: A two-dimensional array of floats with shape (3, 3).
         moltype : List indicating the type of molecules
         namemoltype : List of molecule labels
         stable_steps : Number of frames to use after system relaxation
         k_max : Maximum k value for calculation, defaults to 15.0
-        k_bins : Number of k points, defaults to 100
         n_k_directions : Number of k directions for spherical averaging, defaults to 50
         output : Optional dictionary to store results, defaults to None
         ver : Whether to show progress bar, defaults to True
@@ -92,9 +86,12 @@ class SsfCalc:
         if 'S(k)_atomic' not in output:
             output['S(k)_atomic'] = {}
 
+        comx, comy, comz = coordinates.transpose(2, 0, 1)
+        Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
+
         # Initialize k points
-        k_min = 2 * np.pi / (max(Lx, Ly, Lz)*6)
-        k_points = np.linspace(k_min, k_max, k_bins)
+        k_min = 2 * np.pi / (max(Lx, Ly, Lz))
+        k_points = np.arange(k_min, k_max + k_min, k_min)
         output['S(k)_atomic']['k'] = k_points
 
         # Pre-generate k directions
@@ -160,6 +157,7 @@ class SsfCalc:
         kz = cos_theta
         
         return np.column_stack((kx, ky, kz))
+    
 
     def rdf2ssf(
         self,

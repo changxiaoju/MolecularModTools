@@ -8,12 +8,8 @@ class MsdCalc:
 
     def runMsd(
         self,
-        comx: np.ndarray,
-        comy: np.ndarray,
-        comz: np.ndarray,
-        Lx: float,
-        Ly: float,
-        Lz: float,
+        coordinates: np.ndarray,
+        bounds_matrix: np.ndarray,
         moltype: List[int],
         namemoltype: List[str],
         dt: float,
@@ -27,8 +23,8 @@ class MsdCalc:
         types in the system from center of mass positions
 
         Parameters:
-            comx, comy, comz: Center of mass coordinates
-            Lx, Ly, Lz: Box dimensions
+            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3).
+            bounds_matrix: A two-dimensional array of floats with shape (3, 3).
             moltype: List indicating the type of molecules
             namemoltype: List of molecule labels
             dt: Timestep
@@ -44,9 +40,12 @@ class MsdCalc:
         if output is None:
             output = {}
 
+        comx, comy, comz = coordinates.transpose(2, 0, 1)
+        Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
+        
         Lx2, Ly2, Lz2 = Lx / 2, Ly / 2, Lz / 2
         (comx, comy, comz) = self.unwrap(comx, comy, comz, Lx, Ly, Lz, Lx2, Ly2, Lz2)
-        num_timesteps = len(comx)
+        num_timesteps = len(coordinates)
         (num_init, len_MSD, MSD, diffusivity) = self.gettimesteps(num_timesteps, namemoltype, skip, num_init)
         (molcheck, nummol) = self.setmolarray(moltype, namemoltype)
         with tqdm(total=num_init, desc="Calculating MSD", 

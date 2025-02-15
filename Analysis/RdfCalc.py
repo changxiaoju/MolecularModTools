@@ -7,12 +7,8 @@ from typing import List, Dict, Optional, Union, Tuple
 class RdfCalc:
     def runRdf(
         self,
-        comx: np.ndarray,
-        comy: np.ndarray,
-        comz: np.ndarray,
-        Lx: float,
-        Ly: float,
-        Lz: float,
+        coordinates: np.ndarray,
+        bounds_matrix: np.ndarray,
         moltype: List[int],
         namemoltype: List[str],
         stable_steps: int,
@@ -26,8 +22,8 @@ class RdfCalc:
         center of mass for all species in the system
 
         Parameters:
-            comx, comy, comz: Center of mass coordinates
-            Lx, Ly, Lz: Box dimensions
+            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3).
+            bounds_matrix: A two-dimensional array of floats with shape (3, 3).
             moltype: List indicating the type of molecules
             namemoltype: List of molecule labels
             stabel_steps: Number of frames to use after system relaxation
@@ -41,7 +37,10 @@ class RdfCalc:
         """
         if output is None:
             output = {}
-            
+        
+        comx, comy, comz = coordinates.transpose(2, 0, 1)
+        Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
+
         (maxr, numbins, count, g, firststep) = self.setgparam(
             Lx, Ly, Lz, stable_steps, namemoltype, maxr, binsize, len(comx)
         )
