@@ -2,7 +2,6 @@ import numpy as np
 from tqdm import tqdm
 from numba import njit, prange
 from typing import List, Dict, Optional, Union, Tuple
-from time import time
 
 
 @njit(parallel=True, fastmath=True, boundscheck=False, nogil=True)
@@ -166,7 +165,6 @@ class SsfCalc:
                         first_step = 0
                     
                     for step in range(first_step, numsteps):
-                        t2 = time()
 
                         pos = np.column_stack((comx[step], comy[step], comz[step]))
                         pos = self._apply_pbc(pos, Lx, Ly, Lz)
@@ -182,19 +180,13 @@ class SsfCalc:
                         if norm == 0:
                             sk_frame = np.zeros_like(sorted_k_values)
                         else:
-                            t4 = time()
-                            print(f"Time taken to apply pbc: {t4 - t2} seconds")
                             sk_all = calculate_sk_numba_optimized(k_vectors.astype(np.float32),
                                                                     pos_i.astype(np.float32),
                                                                     pos_j.astype(np.float32),
                                                                     np.float32(norm))
 
                             # Average for each k group
-                            t5 = time()
-                            print(f"Time taken to calculate sk_all: {t5 - t4} seconds")
                             sk_frame = np.array([np.mean(sk_all[indices]) for indices in group_indices], dtype=np.float32)
-                            t6 = time()
-                            print(f"Time taken to calculate sk_frame: {t6 - t5} seconds")
                         sk_sum += sk_frame
                         pbar.update(1)
                     sk_avg = sk_sum / stable_steps
