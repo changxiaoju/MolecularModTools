@@ -2,38 +2,64 @@ import numpy as np
 from tqdm import tqdm
 from numba import njit, prange
 from typing import List, Dict, Optional, Union, Tuple
+from time import time
 
-@njit(parallel=True, fastmath=True)
-def calculate_sk_numba(k_points, k_directions, pos_i, pos_j, norm):
-    n_k = len(k_points)
-    n_dir = len(k_directions)
+
+@njit(parallel=True, fastmath=True, boundscheck=False, nogil=True)
+def calculate_sk_numba_optimized(k_vectors, pos_i, pos_j, norm):
+    """
+    Calculate static structure factor S(k) using Numba for optimized performance
+    """
+    n_k = k_vectors.shape[0]
+    n_i = pos_i.shape[0]
+    n_j = pos_j.shape[0]
     sk = np.zeros(n_k, dtype=np.float32)
     
+    # Force memory continuity (key optimization!)
+    pos_i = np.ascontiguousarray(pos_i)
+    pos_j = np.ascontiguousarray(pos_j)
+    k_vectors = np.ascontiguousarray(k_vectors)
+    
+    # Pre-expand k vector components (avoid accessing a 2D array each time)
+    kx_all = k_vectors[:, 0]
+    ky_all = k_vectors[:, 1]
+    kz_all = k_vectors[:, 2]
+    
+    # Change the parallelization strategy to group by k
     for k in prange(n_k):
-        k_val = k_points[k]
-        sum_real = 0.0
-        sum_imag = 0.0
+        kx = kx_all[k]
+        ky = ky_all[k]
+        kz = kz_all[k]
         
-        for d in range(n_dir):
-            kx, ky, kz = k_val * k_directions[d]
-            
-            # 预计算三角函数参数
-            dot_i = pos_i[:, 0] * kx + pos_i[:, 1] * ky + pos_i[:, 2] * kz
-            dot_j = pos_j[:, 0] * kx + pos_j[:, 1] * ky + pos_j[:, 2] * kz
-            
-            # 使用欧拉公式展开复数运算
-            sum_i_real = np.sum(np.cos(dot_i))
-            sum_i_imag = np.sum(np.sin(dot_i))
-            sum_j_real = np.sum(np.cos(dot_j))
-            sum_j_imag = np.sum(np.sin(dot_j))
-            
-            # 计算点积的实部
-            real_part = (sum_i_real * sum_j_real + sum_i_imag * sum_j_imag)
-            sum_real += real_part
+        sum_real_i = 0.0
+        sum_imag_i = 0.0
+        sum_real_j = 0.0
+        sum_imag_j = 0.0
         
-        sk[k] = sum_real / (n_dir * norm)
+        for idx in range(max(n_i, n_j)):
+            # Process particle i
+            if idx < n_i:
+                x_i = pos_i[idx, 0]
+                y_i = pos_i[idx, 1]
+                z_i = pos_i[idx, 2]
+                dot_i = kx * x_i + ky * y_i + kz * z_i
+                sum_real_i += np.cos(dot_i)
+                sum_imag_i += np.sin(dot_i)
+            
+            # Process particle j
+            if idx < n_j:
+                x_j = pos_j[idx, 0]
+                y_j = pos_j[idx, 1]
+                z_j = pos_j[idx, 2]
+                dot_j = kx * x_j + ky * y_j + kz * z_j
+                sum_real_j += np.cos(dot_j)
+                sum_imag_j += np.sin(dot_j)
+        
+        # Calculate the cross term
+        sk[k] = (sum_real_i * sum_real_j + sum_imag_i * sum_imag_j) / norm
     
     return sk
+
 
 class SsfCalc:
     """Calculate static structure factor from atomic configurations or RDF data"""
@@ -56,8 +82,8 @@ class SsfCalc:
         namemoltype: List[str],
         stable_steps: int,
         k_max: float = 15.0,
-        n_k_directions: int = 50,
         output: Optional[Dict] = None,
+        bin_precision: int = 9,
         ver: bool = True,
     ) -> Dict:
         """
@@ -71,8 +97,8 @@ class SsfCalc:
         namemoltype : List of molecule labels
         stable_steps : Number of frames to use after system relaxation
         k_max : Maximum k value for calculation, defaults to 15.0
-        n_k_directions : Number of k directions for spherical averaging, defaults to 50
         output : Optional dictionary to store results, defaults to None
+        bin_precision : Determines how finely to bin k-magnitudes by specifying decimal rounding precision
         ver : Whether to show progress bar, defaults to True
 
         Returns
@@ -90,32 +116,58 @@ class SsfCalc:
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
         moltype = moltype - np.array(moltype).min() #start from 0! 
 
-        # Initialize k points
-        k_min = 2 * np.pi / (max(Lx, Ly, Lz))
-        k_points = np.arange(k_min, k_max + k_min, k_min)
-        output['S(k)_atomic']['k'] = k_points
-
-        # Pre-generate k directions
-        k_directions = self._generate_k_directions(n_k_directions).astype(np.float32)
+        L = max(Lx, Ly, Lz)
+        dk = 2 * np.pi / L
+        n_max = int(np.ceil(k_max / dk))
+        # Generate all possible k vectors
+        k_vectors = []
+        for nx in range(n_max + 1):
+            for ny in range(n_max + 1):
+                for nz in range(n_max + 1):
+                    if nx == 0 and ny == 0 and nz == 0:
+                        continue  # Exclude k = 0 point
+                    k_mag = dk * np.sqrt(nx**2 + ny**2 + nz**2)
+                    if k_mag > k_max:
+                        continue
+                    k_vectors.append([nx * dk, ny * dk, nz * dk])
+        
+        if not k_vectors:
+            raise ValueError("No valid k vectors generated. Check k_max and system size.")
+        k_vectors = np.array(k_vectors, dtype=np.float32)
+        k_magnitudes = np.linalg.norm(k_vectors, axis=1)
+        # Use rounding for grouping
+        rounded_magnitudes = np.round(k_magnitudes, bin_precision)
+        unique_k, indices = np.unique(rounded_magnitudes, return_inverse=True)
+        sorted_k_indices = np.argsort(unique_k)
+        sorted_k_values = unique_k[sorted_k_indices]
+        # Pre-generate indices for each k group
+        group_indices = []
+        for k_val in sorted_k_values:
+            group_indices.append(np.where(rounded_magnitudes == k_val)[0])
+        output['S(k)_atomic']['k'] = sorted_k_values
 
         unique_types = sorted(set(moltype))
         n_types = len(unique_types)
+        total_pairs = n_types * (n_types + 1) // 2
+        total_iterations = total_pairs * stable_steps
 
-        with tqdm(total=n_types*(n_types+1)//2*stable_steps, desc="Calculating S(k)", disable=not ver) as pbar:
+        with tqdm(total=total_iterations, desc="Calculating S(k)", disable=not ver) as pbar:
             for i in range(n_types):
                 type_i = unique_types[i]
                 for j in range(i, n_types):
                     type_j = unique_types[j]
                     
-                    sk_sum = np.zeros_like(k_points)
+                    sk_sum = np.zeros_like(sorted_k_values, dtype=np.float32)
                     numsteps = len(comx)  
                     first_step = numsteps - stable_steps  
-
+                
                     if first_step < 0:
                         print(f"Warning: stable_steps ({stable_steps}) is larger than total steps ({numsteps}). Using all steps.")
                         first_step = 0
-
+                    
                     for step in range(first_step, numsteps):
+                        t2 = time()
+
                         pos = np.column_stack((comx[step], comy[step], comz[step]))
                         pos = self._apply_pbc(pos, Lx, Ly, Lz)
                         
@@ -127,39 +179,30 @@ class SsfCalc:
                         N_i = len(pos_i)
                         N_j = len(pos_j)
                         norm = np.sqrt(N_i * N_j) if i != j else N_i
-                        
-                        sk_frame = calculate_sk_numba(k_points.astype(np.float32), 
-                                                        k_directions,
-                                                        pos_i, 
-                                                        pos_j,
-                                                        np.float32(norm))
-                        
+                        if norm == 0:
+                            sk_frame = np.zeros_like(sorted_k_values)
+                        else:
+                            t4 = time()
+                            print(f"Time taken to apply pbc: {t4 - t2} seconds")
+                            sk_all = calculate_sk_numba_optimized(k_vectors.astype(np.float32),
+                                                                    pos_i.astype(np.float32),
+                                                                    pos_j.astype(np.float32),
+                                                                    np.float32(norm))
+
+                            # Average for each k group
+                            t5 = time()
+                            print(f"Time taken to calculate sk_all: {t5 - t4} seconds")
+                            sk_frame = np.array([np.mean(sk_all[indices]) for indices in group_indices], dtype=np.float32)
+                            t6 = time()
+                            print(f"Time taken to calculate sk_frame: {t6 - t5} seconds")
                         sk_sum += sk_frame
                         pbar.update(1)
-                    
                     sk_avg = sk_sum / stable_steps
-                    
                     pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
                     output['S(k)_atomic'][pair_key] = sk_avg
 
         return output
     
-    @staticmethod
-    def _generate_k_directions(n_directions: int) -> np.ndarray:
-        """Generate uniformly distributed unit vectors for k directions"""
-        golden_ratio = (1 + np.sqrt(5)) / 2
-        i = np.arange(n_directions)
-        phi = 2 * np.pi * i / golden_ratio
-        cos_theta = 1 - 2 * (i + 0.5) / n_directions
-        sin_theta = np.sqrt(1 - cos_theta**2)
-        
-        kx = sin_theta * np.cos(phi)
-        ky = sin_theta * np.sin(phi)
-        kz = cos_theta
-        
-        return np.column_stack((kx, ky, kz))
-    
-
     def rdf2ssf(
         self,
         k_points: np.ndarray,
@@ -229,4 +272,3 @@ class SsfCalc:
             output['S(k)_rdf_ft'][pair_key] = s_k
 
         return output
-
