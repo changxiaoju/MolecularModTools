@@ -1,6 +1,5 @@
 import numpy as np
 from tqdm import tqdm
-from typing import List, Dict, Optional, Tuple
 from numba import njit, prange
 from typing import List, Dict, Optional, Union, Tuple
 
