@@ -42,6 +42,8 @@ class MsdCalc:
 
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
+        moltype = moltype - np.array(moltype).min() #start from 0! 
+
         
         Lx2, Ly2, Lz2 = Lx / 2, Ly / 2, Lz / 2
         (comx, comy, comz) = self.unwrap(comx, comy, comz, Lx, Ly, Lz, Lx2, Ly2, Lz2)

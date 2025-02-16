@@ -53,6 +53,8 @@ class RdfCalc:
         
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
+        moltype = moltype - np.array(moltype).min() #start from 0! 
+
 
         (maxr, numbins, count, g, firststep) = self.setgparam(
             Lx, Ly, Lz, stable_steps, namemoltype, maxr, binsize, len(comx)
