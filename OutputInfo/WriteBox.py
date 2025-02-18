@@ -90,35 +90,37 @@ class write_box:
 
     def write_lammps_trj_file(
         self, 
-        frames: List[Tuple[np.ndarray, np.ndarray]], 
+        coordinates: np.ndarray,
+        bounds_matrix: np.ndarray,
         property_names: Optional[List[str]] = None
     ) -> None:
         """
         Write a LAMMPS trajectory file with multiple frames.
 
         Parameters:
-            frames: List of frame data tuples, each containing:
-                - Coordinates and properties array (N_atoms, N_properties)
-                - Cell lengths array (3,)
+            coordinates: Atomic coordinates array (Nframes, N_atoms, 3)
+            bounds_matrix: Box matrices array (Nframes, 3,3) or (3,3)
             property_names: Names of properties to dump with coordinates
-
-        Returns:
-            None
         """
         if property_names is None:
             property_names = ['x', 'y', 'z']
 
+        # Handle single frame bounds_matrix
+        if bounds_matrix.ndim == 2:
+            bounds_matrix = np.expand_dims(bounds_matrix, axis=0)
+            
+        if bounds_matrix.shape[0] != coordinates.shape[0]:
+            if bounds_matrix.shape[0] != 1:
+                raise ValueError("bounds_matrix must have same number of frames as coordinates or be single frame")
+            bounds_matrix = np.repeat(bounds_matrix, coordinates.shape[0], axis=0)
+
         ret = ""
-
-        for step, frame in enumerate(frames):
-
-            coordinates_and_properties, cell_length = frame[0], frame[1]
-            num_dump_values = coordinates_and_properties.shape[1]
-
+        for step in range(coordinates.shape[0]):
             ret += f"ITEM: TIMESTEP\n{step}\n"
             ret += "ITEM: NUMBER OF ATOMS\n"
             ret += f"{sum(self.num_atoms)}\n"
             ret += "ITEM: BOX BOUNDS pp pp pp\n"
+            cell_length = np.diag(bounds_matrix[step])
             ret += f"0.0 {cell_length[0]}\n"
             ret += f"0.0 {cell_length[1]}\n"
             ret += f"0.0 {cell_length[2]}\n"
@@ -134,7 +136,7 @@ class write_box:
                 element_type = self.ele_name_idx[element]
                 for _ in range(number):
                     data_line = f"{atom_id} {element_type}"
-                    for value in coordinates_and_properties[atom_id - 1]:
+                    for value in coordinates[step, atom_id - 1]:
                         data_line += f" {value:.4f}"
                     data_line += f" # {element}\n"
                     ret += data_line
@@ -142,38 +144,38 @@ class write_box:
 
         with open(self.filename, "w") as f:
             f.write(ret)
-        
 
     def write_xyz_file(
         self, 
-        frames: List[Tuple[np.ndarray, np.ndarray]]
+        coordinates: np.ndarray,
+        bounds_matrix: np.ndarray
     ) -> None:
         """
         Write a xyz trajectory file with multiple frames.
 
         Parameters:
-            frames: List of frame data tuples, each containing:
-                - Coordinates array (N_atoms,3)
-                - Cell lengths array (3,)
-
-        Returns:
-            None
+            coordinates: Atomic coordinates array (Nframes, N_atoms, 3)
+            bounds_matrix: Box matrices array (Nframes, 3,3) or (3,3)
         """
+        # Handle single frame bounds_matrix
+        if bounds_matrix.ndim == 2:
+            bounds_matrix = np.expand_dims(bounds_matrix, axis=0)
+            
+        if bounds_matrix.shape[0] != coordinates.shape[0]:
+            if bounds_matrix.shape[0] != 1:
+                raise ValueError("bounds_matrix must have same number of frames as coordinates or be single frame")
+            bounds_matrix = np.repeat(bounds_matrix, coordinates.shape[0], axis=0)
 
         ret = ""
-
-        for frame in frames:
-
-            coordinates, bounds_matrix = frame[0], frame[1]
-            cell_length = np.diag(bounds_matrix)
-
+        for frame_idx in range(coordinates.shape[0]):
             ret += f"{sum(self.num_atoms)}\n"
+            cell_length = np.diag(bounds_matrix[frame_idx])
             ret += f"{cell_length[0]} {cell_length[1]} {cell_length[2]}\n"
 
             atom_id = 1
             for element, number in zip(self.atoms_types, self.num_atoms):
                 for _ in range(number):
-                    x, y, z = coordinates[atom_id - 1]
+                    x, y, z = coordinates[frame_idx, atom_id - 1]
                     ret += f"{element} {x:.4f} {y:.4f} {z:.4f}\n"
                     atom_id += 1
 

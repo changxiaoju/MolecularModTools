@@ -15,9 +15,9 @@ def read_xdatcar_frame(
 
     Returns:
         Tuple containing:
-            - System info line
-            - Frame data (single frame or list of frames)
-            - Global atom types
+            - List of frame data (timestep, coordinates) or a single array (coordinates)
+            - Cell Vectors
+            - List of atom numbers
     """
     frames = []
 
@@ -124,7 +124,7 @@ def read_lammpstrj_dump(filename: str, interval: int = 1) -> Tuple[List[Tuple[in
 
     Returns:
         Tuple containing:
-            - Single or list of frame data (timestep, coordinates, box bounds)
+            - List of frame data (timestep, coordinates, box bounds) or a single tuple (timestep, coordinates, box bounds)
             - Global atom types
     """
 
@@ -252,7 +252,7 @@ def read_lammps_dump(
     Returns:
         Tuple containing:
             - Header information
-            - List of frames (timestep, atom data, box bounds)
+            - List of frames (timestep, atom data, box bounds) or a single tuple (timestep, atom data, box bounds)
             - Global atom types
     """
     frames = []
