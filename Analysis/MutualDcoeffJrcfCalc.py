@@ -1,7 +1,7 @@
 import numpy as np
 import sys, copy
 from collections import defaultdict
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from OutputInfo import ReadBox, LammpsMDInfo
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
@@ -51,7 +51,7 @@ class MutualDcoeffJrcfCalc:
         """
         if output is None:
             output = {}
-            
+
         # read
         properties = ["vx", "vy", "vz"]
 
@@ -154,7 +154,7 @@ class MutualDcoeffJrcfCalc:
         nummoltype: np.ndarray,
         dump_frec: int,
         interval: int,
-        molmass: List[int]
+        molmass: List[int],
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         molconc = nummoltype / nummoltype.sum()
         vel = vel[:, :, Nskip:]
@@ -198,7 +198,8 @@ class MutualDcoeffJrcfCalc:
         # Calculate binary mutual diffusion coefficient, eq.(4.5) in Zhou J Phs Chem
         const = 3 * nummoltype.sum() * molconc.prod()
         Dt = dt * dump_frec * interval
-        mutual_diffuso = cumtrapz(correlation) * Dt / const / 1e8
+
+        mutual_diffuso = cumulative_trapezoid(correlation, dx=Dt) / const / 1e8
         Time = np.arange(mutual_diffuso.shape[2]) * Dt
 
         # The reason for not outputting J_flux is that it is not involved in the diffusion matrix calculation

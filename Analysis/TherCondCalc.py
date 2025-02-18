@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
 from scipy.constants import k, eV
@@ -26,7 +26,7 @@ class TherCondCalc:
         ver: int = 1,
     ) -> Dict:
         """
-        Calculate average and standard deviation of the thermal conductivity and fit 
+        Calculate average and standard deviation of the thermal conductivity and fit
         the result with single or double-exponential function.
 
         Parameters:
@@ -46,7 +46,7 @@ class TherCondCalc:
         """
         if output is None:
             output = {}
-            
+
         output["k"] = {}
         output["k"]["Units"] = "W/(mK)"
 
@@ -103,12 +103,7 @@ class TherCondCalc:
 
         return output
 
-    def getthercond(
-        self,
-        thermo_df: pd.DataFrame,
-        Nskip: int,
-        dt: float
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def getthercond(self, thermo_df: pd.DataFrame, Nskip: int, dt: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         numtimesteps = len(thermo_df["Pxy"])
         a1 = thermo_df["c_J[1]"][Nskip:]
         a2 = thermo_df["c_J[2]"][Nskip:]
@@ -123,8 +118,9 @@ class TherCondCalc:
         # Dt = dt * dump_frec
         # Moving forward, we will directly use 'Step' in calculations, inherently including 'dump_frec', thus rendering this step unnecessary
         # fmt: off
-        thercondo = (cumtrapz(autocorrelation,
-                          thermo_df['Step'][:len(autocorrelation)])) * dt/ (volume * temp * temp * k / eV) # kB unit: J/K --> eV/K
+        thercondo = (cumulative_trapezoid(autocorrelation, 
+                                          x=thermo_df['Step'][:len(autocorrelation)])) * dt / (volume * temp * temp * k / eV)
+                                             # kB unit: J/K --> eV/K
         thercondo = thercondo *(eV / (1e-12 * 1e-10)) # eV/(ps*A*K) --> J/(s*m*K)
         # fmt: on
         Time = np.array(thermo_df["Step"][: len(autocorrelation) - 1]) * dt
