@@ -147,7 +147,7 @@ class TherCondCalc:
         
         thercond_components = {}
         for dim in ['x', 'y', 'z']:
-            integral = cumtrapz(aJ[dim], thermo_df['Step'][:len(aJ[dim])]) * dt / (volume * temp**2 * k / eV)
+            integral = cumulative_trapezoid(aJ[dim], thermo_df['Step'][:len(aJ[dim])]) * dt / (volume * temp**2 * k / eV)
             thercond_components[dim] = integral * (eV / (1e-12 * 1e-10))
         
         thercond_total = (thercond_components['x'] + thercond_components['y'] + thercond_components['z']) / 3
