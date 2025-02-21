@@ -227,13 +227,13 @@ class MutualDcoeffJrcfCalc:
         dim = ["x", "y", "z", "total"]
         for i in range(ave_mutual_dcoeff.shape[0]):
             for j in range(ave_mutual_dcoeff.shape[1]):
-                output["D_m"]["JrCF"][i][dim[j]] = copy.deepcopy(jrcf[i, j])
-                output["D_m"]["JrCF Average"][i][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
-                output["D_m"]["Integrals"][i][dim[j]] = copy.deepcopy(mutual_dcoeff[i, j])
-                output["D_m"]["Average Value"][i][dim[j]] = copy.deepcopy(Value[i, j])
-                output["D_m"]["Average Integral"][i][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
-                output["D_m"]["Standard Deviation"][i][dim[j]] = copy.deepcopy(stddev_mutual_dcoeff[i, j])
-                output["D_m"]["Fit"][i][dim[j]] = copy.deepcopy(fitcurve[i, j])
-                output["D_m"]["Fit Cut"][i][dim[j]] = copy.deepcopy(fitcut[i, j])
+                output["D_m"]["JrCF"][str(i)][dim[j]] = copy.deepcopy(jrcf[i, j])
+                output["D_m"]["JrCF Average"][str(i)][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
+                output["D_m"]["Integrals"][str(i)][dim[j]] = copy.deepcopy(mutual_dcoeff[i, j])
+                output["D_m"]["Average Value"][str(i)][dim[j]] = copy.deepcopy(Value[i, j])
+                output["D_m"]["Average Integral"][str(i)][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
+                output["D_m"]["Standard Deviation"][str(i)][dim[j]] = copy.deepcopy(stddev_mutual_dcoeff[i, j])
+                output["D_m"]["Fit"][str(i)][dim[j]] = copy.deepcopy(fitcurve[i, j])
+                output["D_m"]["Fit Cut"][str(i)][dim[j]] = copy.deepcopy(fitcut[i, j])
 
         return output
