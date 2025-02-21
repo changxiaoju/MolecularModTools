@@ -11,7 +11,7 @@ class DcoeffMsdCalc:
         namemoltype: List[str], 
         dt: float, 
         tol: float, 
-        output: Optional[Dict] = None
+        output: Dict
     ) -> Dict:
         """
         This function fits the mean square displacement to calculate the
@@ -21,24 +21,36 @@ class DcoeffMsdCalc:
             namemoltype: List of molecule type names
             dt: Time step
             tol: Tolerance for linear fitting
-            output: Optional dictionary to store results
+            output: Dictionary to store MSD data and also used to store the calculated diffusion coefficients. 
+                    It should have appropriate keys for MSD data corresponding to each molecule type.
 
         Returns:
             Dict: Updated output dictionary containing diffusion coefficients
         """
-        if output is None:
-            output = {}
 
-        output["D_s_MSD"] = {}
-        output["D_s_MSD"]["units"] = "m^2/s"
-        for i in range(0, len(namemoltype)):
-            MSD = output["MSD"][namemoltype[i]]
-            lnMSD = np.log(MSD[1:])
-            time = output["MSD"]["Time"]
-            lntime = np.log(time[1:])
-            firststep = self.findlinearregion(lnMSD, lntime, dt, tol)
-            diffusivity = self.getdiffusivity(time, MSD, firststep)
-            output["D_s_MSD"][namemoltype[i]] = diffusivity
+        output["D_s_MSD"] = {
+            "units": "m^2/s",
+            "dimensions": ["x", "y", "z", "total"]
+        }
+        
+        dimensions = output["MSD"]["Dimensions"]
+        
+        for i in range(len(namemoltype)):
+            mol_name = namemoltype[i]
+            output["D_s_MSD"][mol_name] = {}
+            
+            for dim_idx, dim_name in enumerate(dimensions):
+                MSD_data = output["MSD"][mol_name][dim_name]
+                time = output["MSD"]["Time"]
+                
+                # Skip first point (log(0) undefined)
+                lnMSD = np.log(MSD_data[1:])
+                lntime = np.log(time[1:])
+                
+                firststep = self.findlinearregion(lnMSD, lntime, dt, tol)
+                diffusivity = self.getdiffusivity(time, MSD_data, firststep)
+                
+                output["D_s_MSD"][mol_name][dim_name] = diffusivity
         
         return output
 

@@ -54,8 +54,15 @@ class MsdCalc:
                 disable=not ver) as pbar:
             for i in range(skip, num_init + skip):
                 for j in range(i, i + len_MSD):
-                    r2 = self.calcr2(comx, comy, comz, i, j)
-                    MSD = self.MSDadd(r2, MSD, molcheck, i, j)
+                    r2_x = (comx[j] - comx[i]) ** 2
+                    r2_y = (comy[j] - comy[i]) ** 2
+                    r2_z = (comz[j] - comz[i]) ** 2
+                    r2_total = r2_x + r2_y + r2_z
+                    
+                    MSD = self.MSDadd(r2_x, MSD, molcheck, i, j, 0)  # x dimension
+                    MSD = self.MSDadd(r2_y, MSD, molcheck, i, j, 1)  # y dimension
+                    MSD = self.MSDadd(r2_z, MSD, molcheck, i, j, 2)  # z dimension
+                    MSD = self.MSDadd(r2_total, MSD, molcheck, i, j, 3)  # total
                 pbar.update(1)
         MSD = self.MSDnorm(MSD, num_init, nummol)
         Time = self.createtime(dt, len_MSD)
@@ -116,7 +123,7 @@ class MsdCalc:
             num_init = int(num_init)
 
         len_MSD = num_timesteps - skip - num_init
-        MSD = np.zeros((len(namemoltype), len_MSD))
+        MSD = np.zeros((len(namemoltype), 4, len_MSD))  # 4 dimensions: x,y,z,total
         diffusivity = []
         return (num_init, len_MSD, MSD, diffusivity)
 
@@ -146,17 +153,6 @@ class MsdCalc:
                [0., 1., 0., 0.]])
         """
 
-    def calcr2(
-        self,
-        comx: np.ndarray,
-        comy: np.ndarray,
-        comz: np.ndarray,
-        i: int,
-        j: int
-    ) -> np.ndarray:
-        # Calculates distance molecule has traveled between steps i and j
-        r2 = (comx[j] - comx[i]) ** 2 + (comy[j] - comy[i]) ** 2 + (comz[j] - comz[i]) ** 2
-        return r2
 
     def MSDadd(
         self,
@@ -164,12 +160,13 @@ class MsdCalc:
         MSD: np.ndarray,
         molcheck: np.ndarray,
         i: int,
-        j: int
+        j: int,
+        dim_idx: int  # 0=x,1=y,2=z,3=total
     ) -> np.ndarray:
-        # Uses dot product to calculate average MSD for a molecule type
+        # Add dimensional index to MSD accumulation
         for k in range(0, len(molcheck)):
             sr2 = np.dot(r2, molcheck[k])
-            MSD[k][j - i] += sr2
+            MSD[k][dim_idx][j - i] += sr2
         return MSD
 
     def MSDnorm(
@@ -178,10 +175,10 @@ class MsdCalc:
         MSDt: int,
         nummol: np.ndarray
     ) -> np.ndarray:
-        # Normalize the MSD by number of molecules and number of initial timesteps
+        # Normalize all dimensions
         for i in range(0, len(nummol)):
-            MSD[i] /= MSDt * nummol[i]
-
+            for dim in range(4):  # x,y,z,total
+                MSD[i][dim] /= MSDt * nummol[i]
         return MSD
 
     def createtime(
@@ -201,10 +198,17 @@ class MsdCalc:
         output: Dict,
         Time: np.ndarray
     ) -> None:
-        # Write MSD to output dictionary
-        output["MSD"] = {}
-        output["MSD"]["Units"] = "Angstroms^2, ps"
-        for i in range(0, len(namemoltype)):
-            output["MSD"][namemoltype[i]] = copy.deepcopy(MSD[i].tolist())
-
-        output["MSD"]["Time"] = copy.deepcopy(Time.tolist())
+        # Modify output structure to include dimensions
+        output["MSD"] = {
+            "Units": "Angstroms^2, ps",
+            "Dimensions": ["x", "y", "z", "total"],
+            "Time": copy.deepcopy(Time.tolist())
+        }
+        
+        for i in range(len(namemoltype)):
+            output["MSD"][namemoltype[i]] = {
+                "x": copy.deepcopy(MSD[i,0].tolist()),
+                "y": copy.deepcopy(MSD[i,1].tolist()),
+                "z": copy.deepcopy(MSD[i,2].tolist()),
+                "total": copy.deepcopy(MSD[i,3].tolist())
+            }
