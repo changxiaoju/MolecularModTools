@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
 from scipy.constants import k, eV
@@ -26,7 +26,7 @@ class TherCondCalc:
         ver: int = 1,
     ) -> Dict:
         """
-        Calculate average and standard deviation of the thermal conductivity and fit 
+        Calculate average and standard deviation of the thermal conductivity and fit
         the result with single or double-exponential function.
 
         Parameters:
@@ -46,7 +46,7 @@ class TherCondCalc:
         """
         if output is None:
             output = {}
-            
+
         output["k"] = {}
         output["k"]["Units"] = "W/(mK)"
 

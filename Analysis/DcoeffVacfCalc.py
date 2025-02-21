@@ -1,7 +1,7 @@
 import numpy as np
 import sys, copy
 from collections import defaultdict
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from OutputInfo import ReadBox, LammpsMDInfo
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
@@ -27,8 +27,8 @@ class DcoeffVacfCalc:
         ver: int = 1,
     ) -> Dict:
         """
-        Calculate average and standard deviation of the diffusion coefficient through 
-        velocity autocorrelation function and fit the result with single or 
+        Calculate average and standard deviation of the diffusion coefficient through
+        velocity autocorrelation function and fit the result with single or
         double-exponential function.
 
         Parameters:
@@ -138,7 +138,9 @@ class DcoeffVacfCalc:
         )
         return output
 
-    def getdcoeff(self, vel: np.ndarray, Nskip: int, dt: float, nummoltype: np.ndarray, dump_frec: int, interval: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def getdcoeff(
+        self, vel: np.ndarray, Nskip: int, dt: float, nummoltype: np.ndarray, dump_frec: int, interval: int
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
         vel = vel[:, :, Nskip:]
         Ndim = vel.shape[0]
@@ -162,7 +164,9 @@ class DcoeffVacfCalc:
                 atomindex_start += num
 
         Dt = dt * dump_frec * interval
-        diffuso = cumtrapz(autocorrelation) * Dt / 300000000  # m^2/s,  (A^2/ps)/3 = 10^(-20)/10^(-12)/3 = 1/(3*10^8)
+        diffuso = (
+            cumulative_trapezoid(autocorrelation, dx=Dt) / 300000000
+        )  # m^2/s,  (A^2/ps)/3 = 10^(-20)/10^(-12)/3 = 1/(3*10^8)
         Time = np.arange(diffuso.shape[2]) * Dt
 
         return (Time, diffuso, autocorrelation)

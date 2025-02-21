@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from Analysis.utils import correlationfunction
 from Analysis.fit import fit
 from scipy.constants import k
@@ -26,7 +26,7 @@ class ViscCalc:
         ver: int = 1,
     ) -> Dict:
         """
-        This function calculates average and standard deviation of the viscosity and fits 
+        This function calculates average and standard deviation of the viscosity and fits
         the result with single or double-exponential function.
 
         Parameters:
@@ -46,7 +46,7 @@ class ViscCalc:
         """
         if output is None:
             output = {}
-            
+
         output["μ"] = {}
         output["μ"]["Units"] = "mPa·s"
 
@@ -101,12 +101,7 @@ class ViscCalc:
 
         return output
 
-    def getvisc(
-        self,
-        thermo_df: pd.DataFrame,
-        Nskip: int,
-        dt: float
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def getvisc(self, thermo_df: pd.DataFrame, Nskip: int, dt: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         numtimesteps = len(thermo_df["Pxy"])
         a1 = thermo_df["Pxy"][Nskip:]
         a2 = thermo_df["Pxz"][Nskip:]
@@ -124,8 +119,8 @@ class ViscCalc:
         # Dt = dt * dump_frec
         # Moving forward, we will directly use 'Step' in calculations, inherently including 'dump_frec', thus rendering this step unnecessary
         # fmt: off
-        visco = (cumtrapz(autocorrelation,
-                          thermo_df['Step'][:len(autocorrelation)]))*(1e5)**2*dt*(1e-12)*thermo_df['Volume'].iloc[-1]*(1e-30)/(k*temp)*(1e3)
+        visco = (cumulative_trapezoid(autocorrelation,
+                          x=thermo_df['Step'][:len(autocorrelation)]))*(1e5)**2*dt*(1e-12)*thermo_df['Volume'].iloc[-1]*(1e-30)/(k*temp)*(1e3)
         # 1e5: bar to pascal; 1e-12: ps to s; 1e-30: Angstrom**3 to m**3; k: Boltzmann constant; 1e3: Pa*s to mPa*s
         # fmt: on
         Time = np.array(thermo_df["Step"][: len(autocorrelation) - 1]) * dt
