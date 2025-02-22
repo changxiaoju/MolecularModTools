@@ -201,14 +201,13 @@ class MsdCalc:
         # Modify output structure to include dimensions
         output["MSD"] = {
             "Units": "Angstroms^2, ps",
-            "Dimensions": ["x", "y", "z", "total"],
-            "Time": copy.deepcopy(Time.tolist())
+            "Time": Time.tolist()
         }
         
         for i in range(len(namemoltype)):
             output["MSD"][namemoltype[i]] = {
-                "x": copy.deepcopy(MSD[i,0].tolist()),
-                "y": copy.deepcopy(MSD[i,1].tolist()),
-                "z": copy.deepcopy(MSD[i,2].tolist()),
-                "total": copy.deepcopy(MSD[i,3].tolist())
+                "x": MSD[i,0].tolist(),
+                "y": MSD[i,1].tolist(),
+                "z": MSD[i,2].tolist(),
+                "total": MSD[i,3].tolist()
             }

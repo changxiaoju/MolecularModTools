@@ -179,10 +179,10 @@ class RdfCalc:
         namemoltype: List[str]
     ) -> None:
         output["g(r)"] = {}
-        output["g(r)"]["Units"] = "unitless, angstroms"
+        output["g(r)"]["Units"] = "unitless, Å"
         for i in range(0, len(namemoltype)):
             for j in range(i, len(namemoltype)):
                 if not all([v == 0 for v in g[i][j]]):
-                    output["g(r)"]["{0}-{1}".format(namemoltype[i], namemoltype[j])] = copy.deepcopy(g[i][j].tolist())
+                    output["g(r)"]["{0}-{1}".format(namemoltype[i], namemoltype[j])] = g[i][j].tolist()
         if "Distance" not in list(output["g(r)"].keys()):
-            output["g(r)"]["Distance"] = copy.deepcopy(radiuslist.tolist())
+            output["g(r)"]["Distance"] = radiuslist.tolist()

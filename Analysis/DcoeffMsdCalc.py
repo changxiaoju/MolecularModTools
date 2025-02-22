@@ -30,16 +30,14 @@ class DcoeffMsdCalc:
 
         output["D_s_MSD"] = {
             "units": "m^2/s",
-            "dimensions": ["x", "y", "z", "total"]
         }
         
-        dimensions = output["MSD"]["Dimensions"]
         
         for i in range(len(namemoltype)):
             mol_name = namemoltype[i]
             output["D_s_MSD"][mol_name] = {}
             
-            for dim_idx, dim_name in enumerate(dimensions):
+            for dim_idx, dim_name in enumerate(["x", "y", "z", "total"]):
                 MSD_data = output["MSD"][mol_name][dim_name]
                 time = output["MSD"]["Time"]
                 
@@ -48,9 +46,9 @@ class DcoeffMsdCalc:
                 lntime = np.log(time[1:])
                 
                 firststep = self.findlinearregion(lnMSD, lntime, dt, tol)
-                diffusivity = self.getdiffusivity(time, MSD_data, firststep)
+                diffusivity = self.getdiffusivity(time, MSD_data, firststep, dim_name)
                 
-                output["D_s_MSD"][mol_name][dim_name] = diffusivity
+                output["D_s_MSD"][mol_name][dim_name] = diffusivity.tolist() if isinstance(diffusivity, np.ndarray) else diffusivity
         
         return output
 
@@ -86,7 +84,8 @@ class DcoeffMsdCalc:
         self, 
         Time: np.ndarray, 
         MSD: np.ndarray, 
-        firststep: int
+        firststep: int, 
+        dim_name: str
     ) -> Union[float, str]:
         # Fits the linear region of the MSD to obtain the diffusivity
         calctime = []
@@ -101,5 +100,8 @@ class DcoeffMsdCalc:
                 warnings.simplefilter("ignore")
                 line = stats.linregress(calctime, calcMSD)
             slope = line[0]
-            diffusivity = slope / 600000000  # m^2/s,  (A^2/ps)/6 = 10^(-20)/10^(-12)/6 = 1/(6*10^8)
+            if dim_name == "total":
+                diffusivity = slope / 600000000  # m^2/s,  (A^2/ps)/6 = 10^(-20)/10^(-12)/6 = 1/(6*10^8)
+            else:
+                diffusivity = slope / 200000000  # m^2/s,  (A^2/ps)/2 = 10^(-20)/10^(-12)/2 = 1/(2*10^8)
         return diffusivity

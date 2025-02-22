@@ -143,7 +143,7 @@ class SsfCalc:
         group_indices = []
         for k_val in sorted_k_values:
             group_indices.append(np.where(rounded_magnitudes == k_val)[0])
-        output['S(k)_atomic']['k'] = sorted_k_values
+        output['S(k)_atomic']['k'] = sorted_k_values.tolist()
 
         unique_types = sorted(set(moltype))
         n_types = len(unique_types)
@@ -191,7 +191,7 @@ class SsfCalc:
                         pbar.update(1)
                     sk_avg = sk_sum / stable_steps
                     pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
-                    output['S(k)_atomic'][pair_key] = sk_avg
+                    output['S(k)_atomic'][pair_key] = sk_avg.tolist()
 
         return output
     
@@ -233,7 +233,7 @@ class SsfCalc:
         if 'S(k)_rdf_ft' not in output:
             output['S(k)_rdf_ft'] = {}
         
-        output['S(k)_rdf_ft']['k'] = k_points
+        output['S(k)_rdf_ft']['k'] = k_points.tolist()
         
         # Pre-calculate broadcast shapes for efficiency
         k = k_points.reshape(-1, 1)
@@ -261,6 +261,6 @@ class SsfCalc:
                 # Handle k = 0 case
                 s_k = np.where(k.squeeze() != 0, s_k, delta)
 
-            output['S(k)_rdf_ft'][pair_key] = s_k
+            output['S(k)_rdf_ft'][pair_key] = s_k.tolist()
 
         return output

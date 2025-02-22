@@ -68,7 +68,7 @@ class DcoeffVacfCalc:
         (Time, dcoeffo, autocorrelation) = self.getdcoeff(vel, Nskip, dt, nummoltype, dump_frec, interval)
 
         trjlen = len(Time)
-        Ndim = vel.shape[0]
+        Ndim = vel.shape[0] 
         Nmoltype = len(nummoltype)
 
         dcoeff = np.zeros((Nmoltype, Ndim + 1, Nmd, trjlen))
@@ -77,7 +77,7 @@ class DcoeffVacfCalc:
         vacf[:, :, 0, :] = autocorrelation
 
         if ver >= 1:
-            sys.stdout.write("Dcoeff Trajectory 1 of {} complete\n".format(Nmd))
+            sys.stdout.write("Diffusion Coefficient Trajectory 1 of {} complete\n".format(Nmd))
 
         for i in range(1, Nmd):
             velfilename = fileprefix + str(i).zfill(3) + "/" + velname
@@ -92,7 +92,7 @@ class DcoeffVacfCalc:
             vacf[:, :, i, : trjlen + 1] = autocorrelation
 
             if ver >= 1:
-                sys.stdout.write("Dcoeff Trajectory {} of {} complete\n".format(i + 1, Nmd))
+                sys.stdout.write("Diffusion Coefficient Trajectory {} of {} complete\n".format(i + 1, Nmd))
         if ver >= 1:
             sys.stdout.write("\n")
 
@@ -164,9 +164,10 @@ class DcoeffVacfCalc:
                 atomindex_start += num
 
         Dt = dt * dump_frec * interval
-        diffuso = (
-            cumulative_trapezoid(autocorrelation, dx=Dt) / 300000000
-        )  # m^2/s,  (A^2/ps)/3 = 10^(-20)/10^(-12)/3 = 1/(3*10^8)
+
+        diffuso = cumulative_trapezoid(autocorrelation, dx=Dt) / 100000000
+        # m^2/s,  (A^2/ps) = 10^(-20)/10^(-12) = 1/(10^8)
+        diffuso[:, -1, :] =  diffuso[:, -1, :] / 3 # for total
         Time = np.arange(diffuso.shape[2]) * Dt
 
         return (Time, diffuso, autocorrelation)
@@ -188,17 +189,17 @@ class DcoeffVacfCalc:
         if "D_s_VACF" not in output:
             output["D_s_VACF"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         output["D_s_VACF"]["Units"] = "m^2/s"
-        output["D_s_VACF"]["Time"] = Time
+        output["D_s_VACF"]["Time"] = Time.tolist()
         dim = ["x", "y", "z", "total"]
         for i in range(ave_dcoeff.shape[0]):
             for j in range(ave_dcoeff.shape[1]):
-                output["D_s_VACF"]["VACF"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf[i, j])
-                output["D_s_VACF"]["VACF Average"][namemoltype[i]][dim[j]] = copy.deepcopy(vacf_mean[i, j])
-                output["D_s_VACF"]["Integrals"][namemoltype[i]][dim[j]] = copy.deepcopy(dcoeff[i, j])
-                output["D_s_VACF"]["Average Value"][namemoltype[i]][dim[j]] = copy.deepcopy(Value[i, j])
-                output["D_s_VACF"]["Average Integral"][namemoltype[i]][dim[j]] = copy.deepcopy(ave_dcoeff[i, j])
-                output["D_s_VACF"]["Standard Deviation"][namemoltype[i]][dim[j]] = copy.deepcopy(stddev_dcoeff[i, j])
-                output["D_s_VACF"]["Fit"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcurve[i, j])
-                output["D_s_VACF"]["Fit Cut"][namemoltype[i]][dim[j]] = copy.deepcopy(fitcut[i, j])
+                output["D_s_VACF"]["VACF"][namemoltype[i]][dim[j]] = vacf[i, j].tolist()
+                output["D_s_VACF"]["VACF Average"][namemoltype[i]][dim[j]] = vacf_mean[i, j].tolist()
+                output["D_s_VACF"]["Integrals"][namemoltype[i]][dim[j]] = dcoeff[i, j].tolist()
+                output["D_s_VACF"]["Average Value"][namemoltype[i]][dim[j]] = float(Value[i, j])
+                output["D_s_VACF"]["Average Integral"][namemoltype[i]][dim[j]] = ave_dcoeff[i, j].tolist()
+                output["D_s_VACF"]["Standard Deviation"][namemoltype[i]][dim[j]] = stddev_dcoeff[i, j].tolist()
+                output["D_s_VACF"]["Fit"][namemoltype[i]][dim[j]] = fitcurve[i, j].tolist()
+                output["D_s_VACF"]["Fit Cut"][namemoltype[i]][dim[j]] = int(fitcut[i, j])
 
         return output

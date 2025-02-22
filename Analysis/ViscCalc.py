@@ -76,10 +76,10 @@ class ViscCalc:
         if ver >= 1:
             sys.stdout.write("\n")
 
-        output["μ"]["Time"] = Time[:trjlen]
+        output["μ"]["Time"] = Time[:trjlen].tolist()
         sacf_mean = np.mean(sacf, axis=0)
-        output["μ"]["SACF"] = sacf
-        output["μ"]["SACF Average"] = sacf_mean
+        output["μ"]["SACF"] = sacf.tolist()
+        output["μ"]["SACF Average"] = sacf_mean.tolist()
 
         # fit
         fitvisc = fit()
@@ -92,12 +92,12 @@ class ViscCalc:
                 popt2 = [1e-4, 1e2]
         Value, fitcurve, fitcut = fitvisc.fit(Time, ave_visc, stddev_visc, use_double_exp, popt2, std_perc, endt)
 
-        output["μ"]["Integrals"] = viscosity
-        output["μ"]["Average Value"] = Value
-        output["μ"]["Average Integral"] = ave_visc
-        output["μ"]["Standard Deviation"] = stddev_visc
-        output["μ"]["Fit"] = fitcurve
-        output["μ"]["Fit Cut"] = fitcut
+        output["μ"]["Integrals"] = viscosity.tolist()
+        output["μ"]["Average Value"] = float(Value)
+        output["μ"]["Average Integral"] = ave_visc.tolist()
+        output["μ"]["Standard Deviation"] = stddev_visc.tolist()
+        output["μ"]["Fit"] = fitcurve.tolist()
+        output["μ"]["Fit Cut"] = int(fitcut)
 
         return output
 

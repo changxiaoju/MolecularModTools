@@ -81,7 +81,7 @@ class MutualDcoeffJrcfCalc:
         jrcf[:, :, 0, :] = correlation
 
         if ver >= 1:
-            sys.stdout.write("Mutual Dcoeff Trajectory 1 of {} complete\n".format(Nmd))
+            sys.stdout.write("Mutual Diffusion Coefficient Trajectory 1 of {} complete\n".format(Nmd))
 
         for i in range(1, Nmd):
             velfilename = fileprefix + str(i).zfill(3) + "/" + velname
@@ -99,7 +99,7 @@ class MutualDcoeffJrcfCalc:
             jrcf[:, :, i, : trjlen + 1] = correlation
 
             if ver >= 1:
-                sys.stdout.write("Mutual Dcoeff Trajectory {} of {} complete\n".format(i + 1, Nmd))
+                sys.stdout.write("Mutual Diffusion Coefficient Trajectory {} of {} complete\n".format(i + 1, Nmd))
         if ver >= 1:
             sys.stdout.write("\n")
 
@@ -196,10 +196,12 @@ class MutualDcoeffJrcfCalc:
             indx += 1
 
         # Calculate binary mutual diffusion coefficient, eq.(4.5) in Zhou J Phs Chem
-        const = 3 * nummoltype.sum() * molconc.prod()
+        const = nummoltype.sum() * molconc.prod()
         Dt = dt * dump_frec * interval
 
         mutual_diffuso = cumulative_trapezoid(correlation, dx=Dt) / const / 1e8
+        # m^2/s,  (A^2/ps) = 10^(-20)/10^(-12) = 1/(10^8)
+        mutual_diffuso[:, -1, :] =  mutual_diffuso[:, -1, :] / 3 # for total
         Time = np.arange(mutual_diffuso.shape[2]) * Dt
 
         # The reason for not outputting J_flux is that it is not involved in the diffusion matrix calculation
@@ -223,17 +225,17 @@ class MutualDcoeffJrcfCalc:
         if "D_m" not in output:
             output["D_m"] = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         output["D_m"]["Units"] = "m^2/s"
-        output["D_m"]["Time"] = Time
+        output["D_m"]["Time"] = Time.tolist()
         dim = ["x", "y", "z", "total"]
         for i in range(ave_mutual_dcoeff.shape[0]):
             for j in range(ave_mutual_dcoeff.shape[1]):
-                output["D_m"]["JrCF"][str(i)][dim[j]] = copy.deepcopy(jrcf[i, j])
-                output["D_m"]["JrCF Average"][str(i)][dim[j]] = copy.deepcopy(jrcf_mean[i, j])
-                output["D_m"]["Integrals"][str(i)][dim[j]] = copy.deepcopy(mutual_dcoeff[i, j])
-                output["D_m"]["Average Value"][str(i)][dim[j]] = copy.deepcopy(Value[i, j])
-                output["D_m"]["Average Integral"][str(i)][dim[j]] = copy.deepcopy(ave_mutual_dcoeff[i, j])
-                output["D_m"]["Standard Deviation"][str(i)][dim[j]] = copy.deepcopy(stddev_mutual_dcoeff[i, j])
-                output["D_m"]["Fit"][str(i)][dim[j]] = copy.deepcopy(fitcurve[i, j])
-                output["D_m"]["Fit Cut"][str(i)][dim[j]] = copy.deepcopy(fitcut[i, j])
+                output["D_m"]["JrCF"][str(i)][dim[j]] = jrcf[i, j].tolist()
+                output["D_m"]["JrCF Average"][str(i)][dim[j]] = jrcf_mean[i, j].tolist()
+                output["D_m"]["Integrals"][str(i)][dim[j]] = mutual_dcoeff[i, j].tolist()
+                output["D_m"]["Average Value"][str(i)][dim[j]] = float(Value[i, j])
+                output["D_m"]["Average Integral"][str(i)][dim[j]] = ave_mutual_dcoeff[i, j].tolist()
+                output["D_m"]["Standard Deviation"][str(i)][dim[j]] = stddev_mutual_dcoeff[i, j].tolist()
+                output["D_m"]["Fit"][str(i)][dim[j]] = fitcurve[i, j].tolist()
+                output["D_m"]["Fit Cut"][str(i)][dim[j]] = int(fitcut[i, j])
 
         return output
