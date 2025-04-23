@@ -5,7 +5,7 @@ from io import StringIO
 from typing import Tuple, Optional, List, Dict
 
 
-def basic_info(log_file: str) -> Tuple[int, float, int, int]:
+def basic_info(log_file: str) -> Tuple[int, float, int, int, int]:
     """
     Extract basic simulation information from LAMMPS log file.
 
@@ -18,10 +18,11 @@ def basic_info(log_file: str) -> Tuple[int, float, int, int]:
             - Timestep (dt)
             - Dump frequency
             - Thermo frequency
+            - Total number of atoms
     """
     numlines = 500  # usually, 500 lines is enough for input information in log file
     logfile = open(log_file)
-    foundrunstep, foundtrjdump, foundthermodump, foundtimestep = False, False, False, False
+    foundrunstep, foundtrjdump, foundthermodump, foundtimestep, foundatoms = False, False, False, False, False
     i = 0
     while not (foundrunstep and foundtrjdump and foundthermodump and foundtimestep):
         if i > numlines:
@@ -38,8 +39,11 @@ def basic_info(log_file: str) -> Tuple[int, float, int, int]:
             if not foundtimestep:
                 missing_info.append("timestep")
                 dt = None
+            if not foundatoms:
+                missing_info.append("total atoms")
+                total_atoms = None
             print("could not decide the following: " + ", ".join(missing_info))
-            return Nsteps, dt, dump_frec, thermo_frec
+            return Nsteps, dt, dump_frec, thermo_frec, total_atoms
 
         line = logfile.readline()
         line = line.split()
@@ -70,17 +74,24 @@ def basic_info(log_file: str) -> Tuple[int, float, int, int]:
                     foundtimestep = True
                 except:
                     pass
+            if len(line) == 2 and line[1] == "atoms":
+                try:
+                    total_atoms = int(line[0])
+                    foundatoms = True
+                except:
+                    pass
         i += 1
     logfile.close()
-    return Nsteps, dt, dump_frec, thermo_frec
+    return Nsteps, dt, dump_frec, thermo_frec, total_atoms
 
 
-def thermo_info(log_file: str) -> pd.DataFrame:
+def thermo_info(log_file: str, chunk_size: Optional[int] = 10000) -> pd.DataFrame:
     """
     Extract thermodynamic information from LAMMPS log file.
 
     Parameters:
         log_file: Path to LAMMPS log file
+        chunk_size: A suitable chunk size for large data file
 
     Returns:
         pd.DataFrame: Dataframe containing thermodynamic data
@@ -99,7 +110,6 @@ def thermo_info(log_file: str) -> pd.DataFrame:
             chunk.columns = header
             return chunk.dropna()
 
-        chunk_size = 10000  # Define a suitable chunk size
         chunks = pd.read_csv(file, sep="\s+", header=None, chunksize=chunk_size)
 
         for chunk in chunks:
