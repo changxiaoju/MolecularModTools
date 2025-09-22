@@ -83,7 +83,8 @@ class SsfCalc:
         k_max: float = 15.0,
         output: Optional[Dict] = None,
         bin_precision: int = 9,
-        ver: bool = True,
+        output_3d: bool = False,
+        ver: bool = True
     ) -> Dict:
         """
         Calculate static structure factor S(k) for all species in the system
@@ -98,6 +99,7 @@ class SsfCalc:
         k_max : Maximum k value for calculation, defaults to 15.0
         output : Optional dictionary to store results, defaults to None
         bin_precision : Determines how finely to bin k-magnitudes by specifying decimal rounding precision
+        output_3d : Whether to output 3D structure factor (retains directional information)
         ver : Whether to show progress bar, defaults to True
 
         Returns
@@ -110,6 +112,8 @@ class SsfCalc:
             output = {}
         if 'S(k)_atomic' not in output:
             output['S(k)_atomic'] = {}
+        if output_3d and 'S(k)_3d' not in output:
+            output['S(k)_3d'] = {}
 
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
@@ -118,25 +122,53 @@ class SsfCalc:
         L = max(Lx, Ly, Lz)
         dk = 2 * np.pi / L
         n_max = int(np.ceil(k_max / dk))
-        # Generate all possible k vectors
+
+        # 生成所有象限的k矢量，只考虑Z的正方向的4个卦象，应该够了，其余都是负矢量
         k_vectors = []
+
+        # 第一部分：生成 nz ≥ 1 的矢量
         for nx in range(n_max + 1):
             for ny in range(n_max + 1):
-                for nz in range(n_max + 1):
-                    if nx == 0 and ny == 0 and nz == 0:
-                        continue  # Exclude k = 0 point
-                    k_mag = dk * np.sqrt(nx**2 + ny**2 + nz**2)
+                for nz in range(1, n_max + 1):  
+                    k_mag = np.sqrt((nx * dk)**2 + (ny * dk)**2 + (nz * dk)**2)
                     if k_mag > k_max:
                         continue
-                    k_vectors.append([nx * dk, ny * dk, nz * dk])
-        
+                    for sign_x in (-1, 1) if nx != 0 else (1,):
+                        for sign_y in (-1, 1) if ny != 0 else (1,):
+                            kx = sign_x * nx * dk
+                            ky = sign_y * ny * dk
+                            kz = nz * dk 
+                            k_vectors.append([kx, ky, kz])
+
+        # 第二部分：生成 nz = 0 的矢量
+        for nx in range(n_max + 1):
+            for ny in range(n_max + 1):
+                if nx == 0 and ny == 0:
+                    continue  
+                k_mag = np.sqrt((nx * dk)**2 + (ny * dk)**2)
+                if k_mag > k_max:
+                    continue
+                if nx > 0:
+                    # 情况1: nx > 0，固定 sign_x=1（避免 kx 和 -kx 重复）
+                    for sign_y in (-1, 1) if ny != 0 else (1,):
+                        kx = nx * dk  # sign_x 固定为 +1
+                        ky = sign_y * ny * dk
+                        kz = 0
+                        k_vectors.append([kx, ky, kz])
+                elif nx == 0 and ny > 0:
+                    # 情况2: nx = 0 且 ny > 0，固定 sign_y=1（避免 ky 和 -ky 重复）
+                    kx = 0
+                    ky = ny * dk  # sign_y 固定为 +1
+                    kz = 0
+                    k_vectors.append([kx, ky, kz])
+         
         if not k_vectors:
             raise ValueError("No valid k vectors generated. Check k_max and system size.")
         k_vectors = np.array(k_vectors, dtype=np.float32)
         k_magnitudes = np.linalg.norm(k_vectors, axis=1)
         # Use rounding for grouping
         rounded_magnitudes = np.round(k_magnitudes, bin_precision)
-        unique_k, indices = np.unique(rounded_magnitudes, return_inverse=True)
+        unique_k, group_indices = np.unique(rounded_magnitudes, return_inverse=True)
         sorted_k_indices = np.argsort(unique_k)
         sorted_k_values = unique_k[sorted_k_indices]
         # Pre-generate indices for each k group
@@ -144,6 +176,10 @@ class SsfCalc:
         for k_val in sorted_k_values:
             group_indices.append(np.where(rounded_magnitudes == k_val)[0])
         output['S(k)_atomic']['k'] = sorted_k_values.tolist()
+        
+        if output_3d:
+            output['S(k)_3d']['k_vectors'] = k_vectors.tolist()
+            output['S(k)_3d']['k_magnitudes'] = k_magnitudes.tolist()
 
         unique_types = sorted(set(moltype))
         n_types = len(unique_types)
@@ -157,6 +193,10 @@ class SsfCalc:
                     type_j = unique_types[j]
                     
                     sk_sum = np.zeros_like(sorted_k_values, dtype=np.float32)
+
+                    if output_3d:
+                        sk_3d_sum = np.zeros(len(k_vectors), dtype=np.float32)
+                    
                     numsteps = len(comx)  
                     first_step = numsteps - stable_steps  
                 
@@ -179,19 +219,33 @@ class SsfCalc:
                         norm = np.sqrt(N_i * N_j) if i != j else N_i
                         if norm == 0:
                             sk_frame = np.zeros_like(sorted_k_values)
+                            if output_3d:
+                                sk_3d_frame = np.zeros(len(k_vectors), dtype=np.float32)
                         else:
                             sk_all = calculate_sk_numba_optimized(k_vectors.astype(np.float32),
                                                                     pos_i.astype(np.float32),
                                                                     pos_j.astype(np.float32),
                                                                     np.float32(norm))
 
-                            # Average for each k group
+                            # 处理一维模长平均
                             sk_frame = np.array([np.mean(sk_all[indices]) for indices in group_indices], dtype=np.float32)
+                            
+                            # 保存三维数据
+                            if output_3d:
+                                sk_3d_frame = sk_all
+                        
                         sk_sum += sk_frame
+                        if output_3d:
+                            sk_3d_sum += sk_3d_frame
                         pbar.update(1)
+                    
                     sk_avg = sk_sum / stable_steps
                     pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
                     output['S(k)_atomic'][pair_key] = sk_avg.tolist()
+                    
+                    if output_3d:
+                        sk_3d_avg = sk_3d_sum / stable_steps
+                        output['S(k)_3d'][pair_key] = sk_3d_avg.tolist()
 
         return output
     

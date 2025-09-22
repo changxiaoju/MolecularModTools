@@ -3,14 +3,15 @@ from typing import List, Dict, Union, Optional, Tuple, Any
 
 class write_box:
     """
-    Write atomic coordinates to various file formats. Absolute coordinates only.
+    Write atomic coordinates to various file formats. Supports arbitrary number of properties per atom.
 
     Parameters:
         filename: Output file path
         atoms_types: List of atom type labels (e.g. ['H','He'])
         num_atoms: Number of atoms for each type (e.g. [20,30])
         lattice_constant: Box dimensions array (3,), optional
-        coordinates: Atomic coordinates array (N_atoms,3), optional
+        coordinates: Atomic data array (N_atoms, N_properties), optional
+                    Can include xyz coordinates, velocities, weights, etc.
         ele_name_idx: Element type mapping {'element A': 1, ...}, optional
 
     Returns:
@@ -56,8 +57,11 @@ class write_box:
         for element, number in zip(self.atoms_types, self.num_atoms):
             element_type = self.ele_name_idx[element]
             for _ in range(number):
-                x, y, z = self.coordinates[atom_id - 1]
-                ret += f"{atom_id} {element_type} {x:.4f} {y:.4f} {z:.4f} # {element}\n"
+                atom_data = self.coordinates[atom_id - 1]
+                ret += f"{atom_id} {element_type}"
+                for value in atom_data:
+                    ret += f" {value:.6f}"
+                ret += f" # {element}\n"
                 atom_id += 1
 
         with open(self.filename, "w") as f:
@@ -137,7 +141,7 @@ class write_box:
                 for _ in range(number):
                     data_line = f"{atom_id} {element_type}"
                     for value in coordinates[step, atom_id - 1]:
-                        data_line += f" {value:.4f}"
+                        data_line += f" {value:.6f}"
                     data_line += f" # {element}\n"
                     ret += data_line
                     atom_id += 1
@@ -154,7 +158,8 @@ class write_box:
         Write a xyz trajectory file with multiple frames.
 
         Parameters:
-            coordinates: Atomic coordinates array (Nframes, N_atoms, 3)
+            coordinates: Atomic data array (Nframes, N_atoms, N_properties)
+                        Can include xyz coordinates, velocities, weights, etc.
             bounds_matrix: Box matrices array (Nframes, 3,3) or (3,3)
         """
         # Handle single frame bounds_matrix
@@ -175,8 +180,11 @@ class write_box:
             atom_id = 1
             for element, number in zip(self.atoms_types, self.num_atoms):
                 for _ in range(number):
-                    x, y, z = coordinates[frame_idx, atom_id - 1]
-                    ret += f"{element} {x:.4f} {y:.4f} {z:.4f}\n"
+                    atom_data = coordinates[frame_idx, atom_id - 1]
+                    ret += f"{element}"
+                    for value in atom_data:
+                        ret += f" {value:.6f}"
+                    ret += "\n"
                     atom_id += 1
 
         with open(self.filename, "w") as f:
