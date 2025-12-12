@@ -50,6 +50,9 @@ class RdfCalc:
             coordinates = np.array(new_coordinates)
             bounds_matrix = new_bounds_matrix
             moltype = new_moltype
+
+        if coordinates.ndim == 2:
+            coordinates = coordinates[np.newaxis, :, :]
         
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
@@ -60,7 +63,7 @@ class RdfCalc:
             Lx, Ly, Lz, stable_steps, namemoltype, maxr, binsize, len(comx)
         )
         (count) = self.radialdistribution(
-            g, len(comx[1]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count, ver
+            g, len(comx[0]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count, ver
         )
         nummoltype = np.unique(moltype, return_counts=True)[1]
 

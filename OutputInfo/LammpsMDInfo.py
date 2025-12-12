@@ -110,7 +110,7 @@ def thermo_info(log_file: str, chunk_size: Optional[int] = 10000) -> pd.DataFram
             chunk.columns = header
             return chunk.dropna()
 
-        chunks = pd.read_csv(file, sep="\s+", header=None, chunksize=chunk_size)
+        chunks = pd.read_csv(file, sep="\s+", header=None, chunksize=chunk_size,on_bad_lines='skip')
 
         for chunk in chunks:
             df_list.append(process_chunk(chunk))

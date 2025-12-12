@@ -115,6 +115,9 @@ class SsfCalc:
         if output_3d and 'S(k)_3d' not in output:
             output['S(k)_3d'] = {}
 
+        if coordinates.ndim == 2:
+            coordinates = coordinates[np.newaxis, :, :]
+            
         comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
         moltype = moltype - np.array(moltype).min() #start from 0! 

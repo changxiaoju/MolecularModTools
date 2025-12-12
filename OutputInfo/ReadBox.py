@@ -112,6 +112,130 @@ def read_xyz_frame(filename: str) -> Tuple[Union[np.ndarray, List[np.ndarray]], 
     else:
         return coordinates, cell_lengths, atom_type
 
+def read_lammps_data_file(
+    filename: str
+) -> Tuple[np.ndarray, Optional[np.ndarray], np.ndarray, List[int]]:
+    """
+    Read a single LAMMPS data file (write_data output).
+
+    Parameters:
+        filename: Path to the LAMMPS data file.
+
+    Returns:
+        Tuple containing:
+            - Coordinates sorted by atom id (N x 3)
+            - Velocities sorted by atom id (N x 3) or None if missing
+            - Bounds matrix describing the simulation cell (3 x 3)
+            - Atom type list sorted by atom id
+    """
+    atoms_section: List[str] = []
+    velocities_section: List[str] = []
+    current_section: Optional[str] = None
+
+    num_atoms: Optional[int] = None
+    num_atom_types: Optional[int] = None
+    bounds = {"xlo": 0.0, "xhi": 0.0, "ylo": 0.0, "yhi": 0.0, "zlo": 0.0, "zhi": 0.0}
+    tilts = {"xy": 0.0, "xz": 0.0, "yz": 0.0}
+
+    known_headers = {
+        "masses",
+        "atoms",
+        "velocities",
+        "bonds",
+        "angles",
+        "dihedrals",
+        "impropers",
+        "pair",
+        "bond",
+        "angle",
+        "dihedral",
+        "improper",
+    }
+
+    with open(filename, "r") as data_file:
+        for raw_line in data_file:
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            tokens = line.split()
+            lower_first = tokens[0].lower()
+
+            # Handle global counts and box bounds located in the header
+            if len(tokens) == 2 and tokens[1].lower() == "atoms":
+                num_atoms = int(tokens[0])
+                continue
+            if len(tokens) == 3 and tokens[2].lower() == "atom" and tokens[1].lower() == "types":
+                num_atom_types = int(tokens[0])
+                continue
+            if len(tokens) >= 4 and tokens[-2:] == ["xlo", "xhi"]:
+                bounds["xlo"], bounds["xhi"] = float(tokens[0]), float(tokens[1])
+                continue
+            if len(tokens) >= 4 and tokens[-2:] == ["ylo", "yhi"]:
+                bounds["ylo"], bounds["yhi"] = float(tokens[0]), float(tokens[1])
+                continue
+            if len(tokens) >= 4 and tokens[-2:] == ["zlo", "zhi"]:
+                bounds["zlo"], bounds["zhi"] = float(tokens[0]), float(tokens[1])
+                continue
+            if len(tokens) >= 6 and tokens[-3:] == ["xy", "xz", "yz"]:
+                tilts["xy"], tilts["xz"], tilts["yz"] = map(float, tokens[:3])
+                continue
+
+            # Switch sections whenever a known header appears
+            if lower_first in known_headers:
+                if lower_first == "atoms":
+                    current_section = "atoms"
+                elif lower_first == "velocities":
+                    current_section = "velocities"
+                else:
+                    current_section = None
+                continue
+
+            if current_section == "atoms":
+                atoms_section.append(line)
+            elif current_section == "velocities":
+                velocities_section.append(line)
+
+    if num_atoms is None or not atoms_section:
+        raise ValueError(f"Could not find atom data in {filename}")
+
+    atom_records = []
+    for entry in atoms_section:
+        parts = entry.split()
+        if len(parts) < 5:
+            raise ValueError(f"Atom line has insufficient columns: {entry}")
+        atom_id = int(parts[0])
+        atom_type = int(parts[1])
+        x, y, z = map(float, parts[2:5])
+        atom_records.append((atom_id, atom_type, x, y, z))
+
+    atom_records.sort(key=lambda rec: rec[0])
+    coordinates = np.array([[rec[2], rec[3], rec[4]] for rec in atom_records])
+    atom_types = [rec[1] for rec in atom_records]
+
+    velocities_array: Optional[np.ndarray] = None
+    if velocities_section:
+        velocity_records = []
+        for entry in velocities_section:
+            parts = entry.split()
+            if len(parts) < 4:
+                raise ValueError(f"Velocity line has insufficient columns: {entry}")
+            atom_id = int(parts[0])
+            vx, vy, vz = map(float, parts[1:4])
+            velocity_records.append((atom_id, vx, vy, vz))
+        velocity_records.sort(key=lambda rec: rec[0])
+        velocities_array = np.array([[rec[1], rec[2], rec[3]] for rec in velocity_records])
+
+    bounds_matrix = np.array(
+        [
+            [bounds["xhi"] - bounds["xlo"], tilts["xy"], tilts["xz"]],
+            [0.0, bounds["yhi"] - bounds["ylo"], tilts["yz"]],
+            [0.0, 0.0, bounds["zhi"] - bounds["zlo"]],
+        ]
+    )
+
+    return coordinates, velocities_array, bounds_matrix, atom_types
+
 
 def read_lammpstrj_dump(filename: str, interval: int = 1) -> Tuple[List[Tuple[int, np.ndarray, np.ndarray]], List[int]]:
     """
@@ -191,7 +315,7 @@ def read_lammpstrj_dump(filename: str, interval: int = 1) -> Tuple[List[Tuple[in
                     atom_info = lammpstrj_dump_file.readline().split()
                     atom_id = int(atom_info[0])
                     atom_type = int(atom_info[1])
-                    x, y, z = [float(coord) for coord in atom_info[2:]]
+                    x, y, z = [float(coord) for coord in atom_info[2:5]]
 
                     if coordtype == "relative":
                         x = x * bounds_matrix[0, 0] + min_bound_x
@@ -217,25 +341,6 @@ def read_lammpstrj_dump(filename: str, interval: int = 1) -> Tuple[List[Tuple[in
         return frames[0], atom_type_global
     else:
         return frames, atom_type_global
-
-    """
-    --------------------------usage example (if multiple lammpstrj files)-----------------------------
-    frames = []
-    for i in range(0,100000,10):
-        traj = tmp_dir+'/traj/'+str(i)+'.lammpstrj'
-        frame,atom_type = read_lammpstrj_dump(traj)
-        step,coordinate,bounds_matrix = frame
-        cell_vectors = np.diag(bounds_matrix)
-        frames.append((coordinate,cell_vectors))
-    --------------------------------------------------------------------------------------------------
-
-    --------------------------usage example (if single lammpstrj file)--------------------------------
-    interval = 5
-    frames,atom_type = read_lammpstrj_dump(lammpstrj_file,interval)
-    steps, coordinates_list, bounds_matrices = zip(*frames)
-    --------------------------------------------------------------------------------------------------
-
-    """
 
 
 def read_lammps_dump(
@@ -348,8 +453,7 @@ def read_lammps_dump(
         return info_line, frames[0], atom_type_global
     else:
         return info_line, frames, atom_type_global
-
-
+        
 def extract_dump_data(
     dumpinfo_list: List[List[Dict[str, float]]],
     properties: List[str]

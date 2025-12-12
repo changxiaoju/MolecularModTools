@@ -1,8 +1,6 @@
 import numpy as np
-import copy
 from tqdm import tqdm
 from typing import List, Dict, Optional, Union, Tuple, Any
-
 
 class MsdCalc:
 
@@ -14,25 +12,29 @@ class MsdCalc:
         namemoltype: List[str],
         dt: float,
         skip: int,
+        per_atom: bool = False,   
+        batch_size: int = 10000,
         num_init: Optional[int] = None,
         output: Optional[Dict] = None,
-        ver: bool = True,
+        ver: bool = True 
     ) -> Dict:
         """
-        This function calculates the mean square displacement for all molecule
-        types in the system from center of mass positions
+        Calculate mean squared displacement (MSD) for all species in the system.
+        If per_atom=False (default): calculates averaged MSD by molecule type.
+        If per_atom=True: calculates MSD for each individual atom (large output, beware of memory).
 
         Parameters:
-            coordinates: A Three-dimensional array of floats with shape (Nframes, Natoms, 3)
+            coordinates: A three-dimensional array of floats with shape (Nframes, Natoms, 3)
             bounds_matrix: A two-dimensional array of floats with shape (3, 3)
             moltype: List or numpy array indicating the type of molecules
             namemoltype: List of molecule labels
-            dt: Timestep
-            skip: Initial frames to skip
-            num_init: Number of initial timesteps for MSD calculation
+            dt: Time step between frames
+            skip: Number of initial frames to skip
+            num_init: Number of initial time origins to use for averaging
             output: Optional dictionary to store results
-            ver: Whether to print progress
-
+            ver: Boolean to enable/disable progress bar
+            per_atom: Whether to calculate per-atom MSD instead of averaged MSD
+            batch_size: Batch size for processing atoms when per_atom=True
 
         Returns:
             Dict: Updated output dictionary containing MSD results
@@ -40,174 +42,141 @@ class MsdCalc:
         if output is None:
             output = {}
 
-        comx, comy, comz = coordinates.transpose(2, 0, 1)
         Lx, Ly, Lz = bounds_matrix[0, 0], bounds_matrix[1, 1], bounds_matrix[2, 2]
-        moltype = moltype - np.array(moltype).min() #start from 0! 
-
+        box = np.array([Lx, Ly, Lz])
         
-        Lx2, Ly2, Lz2 = Lx / 2, Ly / 2, Lz / 2
-        (comx, comy, comz) = self.unwrap(comx, comy, comz, Lx, Ly, Lz, Lx2, Ly2, Lz2)
-        num_timesteps = len(coordinates)
-        (num_init, len_MSD, MSD, diffusivity) = self.gettimesteps(num_timesteps, namemoltype, skip, num_init)
-        (molcheck, nummol) = self.setmolarray(moltype, namemoltype)
-        with tqdm(total=num_init, desc="Calculating MSD", 
-                disable=not ver) as pbar:
-            for i in range(skip, num_init + skip):
-                for j in range(i, i + len_MSD):
-                    r2_x = (comx[j] - comx[i]) ** 2
-                    r2_y = (comy[j] - comy[i]) ** 2
-                    r2_z = (comz[j] - comz[i]) ** 2
-                    r2_total = r2_x + r2_y + r2_z
-                    
-                    MSD = self.MSDadd(r2_x, MSD, molcheck, i, j, 0)  # x dimension
-                    MSD = self.MSDadd(r2_y, MSD, molcheck, i, j, 1)  # y dimension
-                    MSD = self.MSDadd(r2_z, MSD, molcheck, i, j, 2)  # z dimension
-                    MSD = self.MSDadd(r2_total, MSD, molcheck, i, j, 3)  # total
-                pbar.update(1)
-        MSD = self.MSDnorm(MSD, num_init, nummol)
-        Time = self.createtime(dt, len_MSD)
-        self.append_dict(MSD, namemoltype, output, Time)
-        return output
+        if ver: print("Unwrapping coordinates...")
+        unwrapped_coords = self.unwrap_vectorized(coordinates, box)
+        
+        comx = unwrapped_coords[:, :, 0]
+        comy = unwrapped_coords[:, :, 1]
+        comz = unwrapped_coords[:, :, 2]
 
-    def unwrap(
-        self,
-        comx: np.ndarray,
-        comy: np.ndarray,
-        comz: np.ndarray,
-        Lx: float,
-        Ly: float,
-        Lz: float,
-        Lx2: float,
-        Ly2: float,
-        Lz2: float,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        # unwraps the coordintes of the molecules
-        # assumes if a molecule is more than half a box length away from its
-        # previous coordinte that it passed through a periodic boundary
-        for i in range(1, len(comx)):
-            for j in range(0, len(comx[i])):
-                if (comx[i][j] - comx[i - 1][j]) > Lx2:
-                    while (comx[i][j] - comx[i - 1][j]) > Lx2:
-                        comx[i][j] -= Lx
-                elif (comx[i][j] - comx[i - 1][j]) < (-Lx2):
-                    while (comx[i][j] - comx[i - 1][j]) < (-Lx2):
-                        comx[i][j] += Lx
+        num_timesteps, num_atoms = comx.shape
+        
+        moltype = np.array(moltype)
+        moltype = moltype - moltype.min()
 
-                if (comy[i][j] - comy[i - 1][j]) > Ly2:
-                    while (comy[i][j] - comy[i - 1][j]) > Ly2:
-                        comy[i][j] -= Ly
-                elif (comy[i][j] - comy[i - 1][j]) < (-Ly2):
-                    while (comy[i][j] - comy[i - 1][j]) < (-Ly2):
-                        comy[i][j] += Ly
-
-                if (comz[i][j] - comz[i - 1][j]) > Lz2:
-                    while (comz[i][j] - comz[i - 1][j]) > Lz2:
-                        comz[i][j] -= Lz
-                elif (comz[i][j] - comz[i - 1][j]) < (-Lz2):
-                    while (comz[i][j] - comz[i - 1][j]) < (-Lz2):
-                        comz[i][j] += Lz
-        return (comx, comy, comz)
-
-    def gettimesteps(
-        self,
-        num_timesteps: int,
-        namemoltype: List[str],
-        skip: int,
-        num_init: Optional[int] = None
-    ) -> Tuple[int, int, np.ndarray, List]:
-        # Calculates the length of the trajectory
-        # Uses length to determine length of MSD and number of initial timesteps
-        if num_init == None:
+        if num_init is None:
             num_init = int(np.floor((num_timesteps - skip) / 2))
         else:
             num_init = int(num_init)
-
+            
         len_MSD = num_timesteps - skip - num_init
-        MSD = np.zeros((len(namemoltype), 4, len_MSD))  # 4 dimensions: x,y,z,total
-        diffusivity = []
-        return (num_init, len_MSD, MSD, diffusivity)
-
-    def setmolarray(
-        self,
-        moltype: Union[List[int], np.ndarray],
-        namemoltype: List[str]
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        # Generates arrays for dot product calculation
-        # Array is MxN where M is number of molecule types and N is number of molecules
-        # value is 1 if molecule N is of type M else is 0
-        molcheck = np.zeros((len(namemoltype), len(moltype)))
-        for i in range(0, len(moltype)):
-            molcheck[moltype[i]][i] = 1
-        nummol = np.zeros(len(namemoltype))
-        for i in range(0, len(nummol)):
-            nummol[i] = np.sum(molcheck[i])
-        return (molcheck, nummol)
-
-        """
-        e.g.,
-        moltype = [0,1,0,0]
-        namemoltype = ['H','He']
         
-        molcheck:
-        array([[1., 0., 1., 1.],
-               [0., 1., 0., 0.]])
-        """
+        Time = np.arange(len_MSD) * dt
 
 
-    def MSDadd(
-        self,
-        r2: np.ndarray,
-        MSD: np.ndarray,
-        molcheck: np.ndarray,
-        i: int,
-        j: int,
-        dim_idx: int  # 0=x,1=y,2=z,3=total
-    ) -> np.ndarray:
-        # Add dimensional index to MSD accumulation
-        for k in range(0, len(molcheck)):
-            sr2 = np.dot(r2, molcheck[k])
-            MSD[k][dim_idx][j - i] += sr2
-        return MSD
+        if "MSD" not in output:
+            output["MSD"] = {"Units": "Angstroms^2, ps", "Time": Time.tolist()}
 
-    def MSDnorm(
-        self,
-        MSD: np.ndarray,
-        MSDt: int,
-        nummol: np.ndarray
-    ) -> np.ndarray:
-        # Normalize all dimensions
-        for i in range(0, len(nummol)):
-            for dim in range(4):  # x,y,z,total
-                MSD[i][dim] /= MSDt * nummol[i]
-        return MSD
-
-    def createtime(
-        self,
-        dt: float,
-        MSDt: int
-    ) -> np.ndarray:
-        # Creates an array of time values
-        Time = np.arange(0, MSDt, dtype=float)
-        Time *= dt
-        return Time
-
-    def append_dict(
-        self,
-        MSD: np.ndarray,
-        namemoltype: List[str],
-        output: Dict,
-        Time: np.ndarray
-    ) -> None:
-        # Modify output structure to include dimensions
-        output["MSD"] = {
-            "Units": "Angstroms^2, ps",
-            "Time": Time.tolist()
-        }
+        unique_types = np.unique(moltype)
         
-        for i in range(len(namemoltype)):
-            output["MSD"][namemoltype[i]] = {
-                "x": MSD[i,0].tolist(),
-                "y": MSD[i,1].tolist(),
-                "z": MSD[i,2].tolist(),
-                "total": MSD[i,3].tolist()
+        for m_idx in unique_types:
+            type_name = namemoltype[m_idx]
+            atom_indices = np.where(moltype == m_idx)[0]
+            n_atoms_this_type = len(atom_indices)
+            
+            if n_atoms_this_type == 0:
+                continue
+
+            if ver: print(f"Calculating Average MSD for type: {type_name} ({n_atoms_this_type} atoms)")
+
+            sub_x = comx[:, atom_indices]
+            sub_y = comy[:, atom_indices]
+            sub_z = comz[:, atom_indices]
+
+            msd_accum = np.zeros((4, len_MSD))
+
+            with tqdm(total=num_init, desc=f"MSD {type_name}", disable=not ver) as pbar:
+                for i in range(skip, num_init + skip):
+                    dx = sub_x[i:i+len_MSD, :] - sub_x[i, :]
+                    dy = sub_y[i:i+len_MSD, :] - sub_y[i, :]
+                    dz = sub_z[i:i+len_MSD, :] - sub_z[i, :]
+
+                    dx2 = dx**2
+                    dy2 = dy**2
+                    dz2 = dz**2
+                    d_tot2 = dx2 + dy2 + dz2
+
+                    msd_accum[0] += np.sum(dx2, axis=1)
+                    msd_accum[1] += np.sum(dy2, axis=1)
+                    msd_accum[2] += np.sum(dz2, axis=1)
+                    msd_accum[3] += np.sum(d_tot2, axis=1)
+                    
+                    pbar.update(1)
+
+            msd_accum /= (num_init * n_atoms_this_type)
+
+            output["MSD"][type_name] = {
+                "x": msd_accum[0].tolist(),
+                "y": msd_accum[1].tolist(),
+                "z": msd_accum[2].tolist(),
+                "total": msd_accum[3].tolist()
             }
+
+
+        if per_atom:
+            if ver: print(f"Calculating Per-Atom MSD (Batch size: {batch_size})...")
+            
+            all_atoms_msd = [] 
+            
+            for b_start in range(0, num_atoms, batch_size):
+                b_end = min(b_start + batch_size, num_atoms)
+                n_batch = b_end - b_start
+                
+                batch_msd_accum = np.zeros((n_batch, len_MSD))
+                
+                bx = comx[:, b_start:b_end]
+                by = comy[:, b_start:b_end]
+                bz = comz[:, b_start:b_end]
+
+                with tqdm(total=num_init, desc=f"Batch {b_start}-{b_end}", disable=not ver) as pbar:
+                    for i in range(skip, num_init + skip):
+                        diff_x = bx[i:i+len_MSD, :] - bx[i, :]
+                        diff_y = by[i:i+len_MSD, :] - by[i, :]
+                        diff_z = bz[i:i+len_MSD, :] - bz[i, :]
+                        
+                        r2 = diff_x**2 + diff_y**2 + diff_z**2
+                        
+                        batch_msd_accum += r2.T
+                        
+                        pbar.update(1)
+                
+                batch_msd_accum /= num_init
+                all_atoms_msd.append(batch_msd_accum)
+
+            final_msd = np.vstack(all_atoms_msd)
+            
+            output["MSD_i"] = {
+                "Units": "Angstroms^2",
+                "Time": Time.tolist(),
+                "Data": final_msd.tolist()
+            }
+
+        return output
+
+    def unwrap_vectorized(self, coords: np.ndarray, box: np.ndarray) -> np.ndarray:
+        """
+        Vectorized unwrapping of coordinates using periodic boundary conditions.
+        Much faster than looping through atoms individually.
+
+        Parameters:
+            coords: Three-dimensional array with shape (Nframes, Natoms, 3)
+            box: One-dimensional array with box dimensions [Lx, Ly, Lz]
+
+        Returns:
+            np.ndarray: Unwrapped coordinates with shape (Nframes, Natoms, 3)
+        """
+        delta = np.diff(coords, axis=0)
+        
+        delta -= np.round(delta / box) * box
+        
+        unwrapped_trajectory = np.cumsum(delta, axis=0)
+        
+        unwrapped = np.vstack((
+            coords[0][np.newaxis, :, :], 
+            coords[0] + unwrapped_trajectory
+        ))
+        
+        return unwrapped
