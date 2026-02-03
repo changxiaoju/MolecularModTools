@@ -16,8 +16,8 @@ class TherCondCalc:
         self,
         fileprefix: str,
         Nmd: int,
-        Nskip: int,
-        use_double_exp: bool,
+        Nskip: int = 0,
+        use_double_exp: bool = True,
         logname: str = "log.lammps",
         output: Optional[Dict] = None,
         popt2: Optional[List[float]] = None,
@@ -32,7 +32,7 @@ class TherCondCalc:
         Parameters:
             fileprefix: Path prefix for input files
             Nmd: Number of MD simulations
-            Nskip: Initial frames to skip
+            Nskip: Initial frames to skip (default: 0, uses all frames)
             use_double_exp: Whether to use double exponential fit
             logname: Name of log file
             output: Optional dictionary to store results

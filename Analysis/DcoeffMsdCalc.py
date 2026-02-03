@@ -10,8 +10,8 @@ class DcoeffMsdCalc:
         self, 
         namemoltype: List[str], 
         dt: float, 
-        tol: float, 
         output: Dict,
+        tol: float = 0.075, 
         ver: bool = True
     ) -> Dict:
         """
@@ -22,8 +22,8 @@ class DcoeffMsdCalc:
         Parameters:
             namemoltype: List of molecule labels
             dt: Time step between frames
-            tol: Tolerance for finding linear region in log-log plot
             output: Dictionary containing MSD results
+            tol: Tolerance for finding linear region in log-log plot
 
         Returns:
             Dict: Updated output dictionary containing diffusion coefficient results

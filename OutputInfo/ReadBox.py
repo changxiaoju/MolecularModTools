@@ -117,6 +117,7 @@ def read_lammps_data_file(
 ) -> Tuple[np.ndarray, Optional[np.ndarray], np.ndarray, List[int]]:
     """
     Read a single LAMMPS data file (write_data output).
+    Supports both orthogonal (xlo/xhi) and non-orthogonal (avec/bvec/cvec) box formats.
 
     Parameters:
         filename: Path to the LAMMPS data file.
@@ -136,6 +137,13 @@ def read_lammps_data_file(
     num_atom_types: Optional[int] = None
     bounds = {"xlo": 0.0, "xhi": 0.0, "ylo": 0.0, "yhi": 0.0, "zlo": 0.0, "zhi": 0.0}
     tilts = {"xy": 0.0, "xz": 0.0, "yz": 0.0}
+    
+    # For non-orthogonal format (avec/bvec/cvec)
+    avec: Optional[np.ndarray] = None
+    bvec: Optional[np.ndarray] = None
+    cvec: Optional[np.ndarray] = None
+    origin: Optional[np.ndarray] = None
+    is_non_orthogonal = False
 
     known_headers = {
         "masses",
@@ -159,7 +167,10 @@ def read_lammps_data_file(
                 continue
 
             tokens = line.split()
+            if len(tokens) == 0:
+                continue
             lower_first = tokens[0].lower()
+            lower_last = tokens[-1].lower() if len(tokens) > 1 else ""
 
             # Handle global counts and box bounds located in the header
             if len(tokens) == 2 and tokens[1].lower() == "atoms":
@@ -168,6 +179,30 @@ def read_lammps_data_file(
             if len(tokens) == 3 and tokens[2].lower() == "atom" and tokens[1].lower() == "types":
                 num_atom_types = int(tokens[0])
                 continue
+            
+            # Check for non-orthogonal format (avec/bvec/cvec)
+            if lower_last == "avec":
+                if len(tokens) >= 4:
+                    avec = np.array([float(tokens[0]), float(tokens[1]), float(tokens[2])])
+                    is_non_orthogonal = True
+                continue
+            if lower_last == "bvec":
+                if len(tokens) >= 4:
+                    bvec = np.array([float(tokens[0]), float(tokens[1]), float(tokens[2])])
+                    is_non_orthogonal = True
+                continue
+            if lower_last == "cvec":
+                if len(tokens) >= 4:
+                    cvec = np.array([float(tokens[0]), float(tokens[1]), float(tokens[2])])
+                    is_non_orthogonal = True
+                continue
+            if len(tokens) >= 4 and tokens[-2:] == ["abc", "origin"]:
+                if len(tokens) >= 4:
+                    origin = np.array([float(tokens[0]), float(tokens[1]), float(tokens[2])])
+                    is_non_orthogonal = True
+                continue
+            
+            # Handle orthogonal format (xlo/xhi, ylo/yhi, zlo/zhi)
             if len(tokens) >= 4 and tokens[-2:] == ["xlo", "xhi"]:
                 bounds["xlo"], bounds["xhi"] = float(tokens[0]), float(tokens[1])
                 continue
@@ -216,7 +251,7 @@ def read_lammps_data_file(
     velocities_array: Optional[np.ndarray] = None
     if velocities_section:
         velocity_records = []
-        for entry in velocities_section:
+        for entry in velocities_section:                    
             parts = entry.split()
             if len(parts) < 4:
                 raise ValueError(f"Velocity line has insufficient columns: {entry}")
@@ -226,13 +261,23 @@ def read_lammps_data_file(
         velocity_records.sort(key=lambda rec: rec[0])
         velocities_array = np.array([[rec[1], rec[2], rec[3]] for rec in velocity_records])
 
-    bounds_matrix = np.array(
-        [
-            [bounds["xhi"] - bounds["xlo"], tilts["xy"], tilts["xz"]],
-            [0.0, bounds["yhi"] - bounds["ylo"], tilts["yz"]],
-            [0.0, 0.0, bounds["zhi"] - bounds["zlo"]],
-        ]
-    )
+    # Build bounds matrix based on format type
+    if is_non_orthogonal:
+        # Non-orthogonal format: bounds_matrix is formed by avec, bvec, cvec as rows
+        if avec is None or bvec is None or cvec is None:
+            raise ValueError(f"Incomplete non-orthogonal box definition in {filename}. Missing avec, bvec, or cvec.")
+        bounds_matrix = np.array([avec, bvec, cvec])
+        # Note: origin is stored but not used in bounds_matrix
+        # Coordinates are already in absolute positions
+    else:
+        # Orthogonal format: use xlo/xhi, ylo/yhi, zlo/zhi with optional tilts
+        bounds_matrix = np.array(
+            [
+                [bounds["xhi"] - bounds["xlo"], tilts["xy"], tilts["xz"]],
+                [0.0, bounds["yhi"] - bounds["ylo"], tilts["yz"]],
+                [0.0, 0.0, bounds["zhi"] - bounds["zlo"]],
+            ]
+        )
 
     return coordinates, velocities_array, bounds_matrix, atom_types
 

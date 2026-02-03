@@ -15,9 +15,9 @@ class MutualDcoeffJrcfCalc:
         fileprefix: str,
         molmass: List[int],
         Nmd: int,
-        Nskip: int,
         interval: int,
-        use_double_exp: bool,
+        Nskip: int = 0,
+        use_double_exp: bool = True,
         logname: str = "log.lammps",
         velname: str = "dump.vel",
         output: Optional[Dict] = None,
@@ -35,8 +35,8 @@ class MutualDcoeffJrcfCalc:
             fileprefix: Path prefix for input files
             molmass: List of molecular masses
             Nmd: Number of MD simulations
-            Nskip: Initial frames to skip
             interval: Reading interval for velocity dump data
+            Nskip: Initial frames to skip (default: 0, uses all frames)
             use_double_exp: Whether to use double-exponential fit
             logname: Name of log file
             velname: Name of velocity dump file

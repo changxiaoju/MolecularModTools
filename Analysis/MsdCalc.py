@@ -11,7 +11,7 @@ class MsdCalc:
         moltype: Union[List[int], np.ndarray],
         namemoltype: List[str],
         dt: float,
-        skip: int,
+        Nskip: int = 0,
         per_atom: bool = False,   
         batch_size: int = 10000,
         num_init: Optional[int] = None,
@@ -21,7 +21,7 @@ class MsdCalc:
         """
         Calculate mean squared displacement (MSD) for all species in the system.
         If per_atom=False (default): calculates averaged MSD by molecule type.
-        If per_atom=True: calculates MSD for each individual atom (large output, beware of memory).
+        If per_atom=True: calculates MSD for each individual atom.
 
         Parameters:
             coordinates: A three-dimensional array of floats with shape (Nframes, Natoms, 3)
@@ -29,7 +29,7 @@ class MsdCalc:
             moltype: List or numpy array indicating the type of molecules
             namemoltype: List of molecule labels
             dt: Time step between frames
-            skip: Number of initial frames to skip
+            Nskip: Number of initial frames to skip (default: 0, uses all frames)
             num_init: Number of initial time origins to use for averaging
             output: Optional dictionary to store results
             ver: Boolean to enable/disable progress bar
@@ -58,11 +58,11 @@ class MsdCalc:
         moltype = moltype - moltype.min()
 
         if num_init is None:
-            num_init = int(np.floor((num_timesteps - skip) / 2))
+            num_init = int(np.floor((num_timesteps - Nskip) / 2))
         else:
             num_init = int(num_init)
             
-        len_MSD = num_timesteps - skip - num_init
+        len_MSD = num_timesteps - Nskip - num_init
         
         Time = np.arange(len_MSD) * dt
 
@@ -89,7 +89,7 @@ class MsdCalc:
             msd_accum = np.zeros((4, len_MSD))
 
             with tqdm(total=num_init, desc=f"MSD {type_name}", disable=not ver) as pbar:
-                for i in range(skip, num_init + skip):
+                for i in range(Nskip, num_init + Nskip):
                     dx = sub_x[i:i+len_MSD, :] - sub_x[i, :]
                     dy = sub_y[i:i+len_MSD, :] - sub_y[i, :]
                     dz = sub_z[i:i+len_MSD, :] - sub_z[i, :]
@@ -132,7 +132,7 @@ class MsdCalc:
                 bz = comz[:, b_start:b_end]
 
                 with tqdm(total=num_init, desc=f"Batch {b_start}-{b_end}", disable=not ver) as pbar:
-                    for i in range(skip, num_init + skip):
+                    for i in range(Nskip, num_init + Nskip):
                         diff_x = bx[i:i+len_MSD, :] - bx[i, :]
                         diff_y = by[i:i+len_MSD, :] - by[i, :]
                         diff_z = bz[i:i+len_MSD, :] - bz[i, :]

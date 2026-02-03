@@ -12,8 +12,8 @@ class RdfCalc:
         bounds_matrix: np.ndarray,
         moltype: Union[List[int], np.ndarray],
         namemoltype: List[str],
-        stable_steps: int,
-        binsize: float,
+        Nskip: int = 0,
+        binsize: float = 0.01,
         maxr: Optional[float] = None,
         output: Optional[Dict] = None,
         replicate: int = 1,
@@ -28,7 +28,7 @@ class RdfCalc:
             bounds_matrix: A two-dimensional array of floats with shape (3, 3)
             moltype: List or numpy array indicating the type of molecules
             namemoltype: List of molecule labels
-            stabel_steps: Number of frames to use after system relaxation
+            Nskip: Number of initial frames to skip (default: 0, uses all frames)
             binsize: Size of bins for RDF calculation
             maxr: Maximum radius for RDF calculation
             output: Optional dictionary to store results
@@ -60,7 +60,7 @@ class RdfCalc:
 
 
         (maxr, numbins, count, g, firststep) = self.setgparam(
-            Lx, Ly, Lz, stable_steps, namemoltype, maxr, binsize, len(comx)
+            Lx, Ly, Lz, Nskip, namemoltype, maxr, binsize, len(comx)
         )
         (count) = self.radialdistribution(
             g, len(comx[0]), moltype, comx, comy, comz, Lx, Ly, Lz, binsize, numbins, maxr, count, ver
@@ -76,14 +76,14 @@ class RdfCalc:
         Lx: float,
         Ly: float,
         Lz: float,
-        stable_steps: int,
+        Nskip: int,
         namemoltype: List[str],
         maxr: Optional[float],
         binsize: float,
         numsteps: int
     ) -> Tuple[float, int, int, np.ndarray, int]:
         # Calculate maximum radius if not specified
-        firststep = numsteps - stable_steps
+        firststep = Nskip
         if maxr == None:
             maxr = min(Lx / 2, Ly / 2, Lz / 2)
         else:

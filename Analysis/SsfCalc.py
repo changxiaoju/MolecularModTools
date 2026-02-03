@@ -79,11 +79,11 @@ class SsfCalc:
         bounds_matrix: np.ndarray,
         moltype: Union[List[int], np.ndarray],
         namemoltype: List[str],
-        stable_steps: int,
+        Nskip: int = 0,
         k_max: float = 15.0,
         output: Optional[Dict] = None,
         bin_precision: int = 9,
-        output_3d: bool = False,
+        output_3d: bool = True,
         ver: bool = True
     ) -> Dict:
         """
@@ -95,7 +95,7 @@ class SsfCalc:
         bounds_matrix: A two-dimensional array of floats with shape (3, 3)
         moltype : List or numpy array indicating the type of molecules
         namemoltype : List of molecule labels
-        stable_steps : Number of frames to use after system relaxation
+        Nskip : Number of initial frames to skip (default: 0, uses all frames)
         k_max : Maximum k value for calculation, defaults to 15.0
         output : Optional dictionary to store results, defaults to None
         bin_precision : Determines how finely to bin k-magnitudes by specifying decimal rounding precision
@@ -123,8 +123,12 @@ class SsfCalc:
         moltype = moltype - np.array(moltype).min() #start from 0! 
 
         L = max(Lx, Ly, Lz)
-        dk = 2 * np.pi / L
-        n_max = int(np.ceil(k_max / dk))
+        dk_x = 2 * np.pi / Lx
+        dk_y = 2 * np.pi / Ly
+        dk_z = 2 * np.pi / Lz
+
+        dk_min = min(dk_x, dk_y, dk_z)
+        n_max = int(np.ceil(k_max / dk_min))
 
         # 生成所有象限的k矢量，只考虑Z的正方向的4个卦象，应该够了，其余都是负矢量
         k_vectors = []
@@ -133,35 +137,41 @@ class SsfCalc:
         for nx in range(n_max + 1):
             for ny in range(n_max + 1):
                 for nz in range(1, n_max + 1):  
-                    k_mag = np.sqrt((nx * dk)**2 + (ny * dk)**2 + (nz * dk)**2)
+                    kx_val = nx * dk_x
+                    ky_val = ny * dk_y
+                    kz_val = nz * dk_z
+                    
+                    k_mag = np.sqrt(kx_val**2 + ky_val**2 + kz_val**2)
                     if k_mag > k_max:
                         continue
+
                     for sign_x in (-1, 1) if nx != 0 else (1,):
                         for sign_y in (-1, 1) if ny != 0 else (1,):
-                            kx = sign_x * nx * dk
-                            ky = sign_y * ny * dk
-                            kz = nz * dk 
+                            kx = sign_x * kx_val
+                            ky = sign_y * ky_val
+                            kz = kz_val 
                             k_vectors.append([kx, ky, kz])
+
 
         # 第二部分：生成 nz = 0 的矢量
         for nx in range(n_max + 1):
             for ny in range(n_max + 1):
                 if nx == 0 and ny == 0:
                     continue  
-                k_mag = np.sqrt((nx * dk)**2 + (ny * dk)**2)
+                kx_val = nx * dk_x
+                ky_val = ny * dk_y
+                k_mag = np.sqrt(kx_val**2 + ky_val**2)
                 if k_mag > k_max:
                     continue
                 if nx > 0:
-                    # 情况1: nx > 0，固定 sign_x=1（避免 kx 和 -kx 重复）
                     for sign_y in (-1, 1) if ny != 0 else (1,):
-                        kx = nx * dk  # sign_x 固定为 +1
-                        ky = sign_y * ny * dk
+                        kx = kx_val #sign_x==1
+                        ky = sign_y * ky_val
                         kz = 0
                         k_vectors.append([kx, ky, kz])
                 elif nx == 0 and ny > 0:
-                    # 情况2: nx = 0 且 ny > 0，固定 sign_y=1（避免 ky 和 -ky 重复）
                     kx = 0
-                    ky = ny * dk  # sign_y 固定为 +1
+                    ky = ky_val  #sign_y==1
                     kz = 0
                     k_vectors.append([kx, ky, kz])
          
@@ -187,7 +197,9 @@ class SsfCalc:
         unique_types = sorted(set(moltype))
         n_types = len(unique_types)
         total_pairs = n_types * (n_types + 1) // 2
-        total_iterations = total_pairs * stable_steps
+        numsteps = len(comx)
+        num_frames_to_use = numsteps - Nskip
+        total_iterations = total_pairs * num_frames_to_use
 
         with tqdm(total=total_iterations, desc="Calculating S(k)", disable=not ver) as pbar:
             for i in range(n_types):
@@ -201,11 +213,7 @@ class SsfCalc:
                         sk_3d_sum = np.zeros(len(k_vectors), dtype=np.float32)
                     
                     numsteps = len(comx)  
-                    first_step = numsteps - stable_steps  
-                
-                    if first_step < 0:
-                        print(f"Warning: stable_steps ({stable_steps}) is larger than total steps ({numsteps}). Using all steps.")
-                        first_step = 0
+                    first_step = Nskip
                     
                     for step in range(first_step, numsteps):
 
@@ -242,12 +250,12 @@ class SsfCalc:
                             sk_3d_sum += sk_3d_frame
                         pbar.update(1)
                     
-                    sk_avg = sk_sum / stable_steps
+                    sk_avg = sk_sum / num_frames_to_use
                     pair_key = f"{namemoltype[type_i]}-{namemoltype[type_j]}"
                     output['S(k)_atomic'][pair_key] = sk_avg.tolist()
                     
                     if output_3d:
-                        sk_3d_avg = sk_3d_sum / stable_steps
+                        sk_3d_avg = sk_3d_sum / num_frames_to_use
                         output['S(k)_3d'][pair_key] = sk_3d_avg.tolist()
 
         return output
