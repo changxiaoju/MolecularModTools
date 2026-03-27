@@ -81,8 +81,8 @@ class SsfCalc:
         namemoltype: List[str],
         Nskip: int = 0,
         k_max: float = 15.0,
+        bin_width_coeff: float = 1/18, 
         output: Optional[Dict] = None,
-        bin_precision: int = 9,
         output_3d: bool = True,
         ver: bool = True
     ) -> Dict:
@@ -98,7 +98,6 @@ class SsfCalc:
         Nskip : Number of initial frames to skip (default: 0, uses all frames)
         k_max : Maximum k value for calculation, defaults to 15.0
         output : Optional dictionary to store results, defaults to None
-        bin_precision : Determines how finely to bin k-magnitudes by specifying decimal rounding precision
         output_3d : Whether to output 3D structure factor (retains directional information)
         ver : Whether to show progress bar, defaults to True
 
@@ -179,16 +178,29 @@ class SsfCalc:
             raise ValueError("No valid k vectors generated. Check k_max and system size.")
         k_vectors = np.array(k_vectors, dtype=np.float32)
         k_magnitudes = np.linalg.norm(k_vectors, axis=1)
-        # Use rounding for grouping
-        rounded_magnitudes = np.round(k_magnitudes, bin_precision)
-        unique_k, group_indices = np.unique(rounded_magnitudes, return_inverse=True)
-        sorted_k_indices = np.argsort(unique_k)
-        sorted_k_values = unique_k[sorted_k_indices]
-        # Pre-generate indices for each k group
+
+        dk_min = min(dk_x, dk_y, dk_z)
+        bin_width = dk_min * bin_width_coeff
+        k_edges = np.arange(0, k_max + bin_width, bin_width)
+        bin_indices = np.digitize(k_magnitudes, k_edges) - 1
+
+        valid_mask = (bin_indices >= 0) & (bin_indices < len(k_edges) - 1)
+        valid_indices = np.where(valid_mask)[0]
+        valid_bin_indices = bin_indices[valid_mask]
+        used_bins = np.unique(valid_bin_indices)
+        
+        sorted_k_values = []
         group_indices = []
-        for k_val in sorted_k_values:
-            group_indices.append(np.where(rounded_magnitudes == k_val)[0])
-        output['S(k)_atomic']['k'] = sorted_k_values.tolist()
+        
+        for b_idx in used_bins:
+            k_center = (k_edges[b_idx] + k_edges[b_idx+1]) / 2.0
+            sorted_k_values.append(k_center)
+            mask_for_this_bin = (valid_bin_indices == b_idx)
+            original_indices = valid_indices[mask_for_this_bin]
+            
+            group_indices.append(original_indices)
+            
+        output['S(k)_atomic']['k'] = sorted_k_values
         
         if output_3d:
             output['S(k)_3d']['k_vectors'] = k_vectors.tolist()
